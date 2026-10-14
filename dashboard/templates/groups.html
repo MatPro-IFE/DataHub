@@ -1,0 +1,55 @@
+{#
+SPDX-FileCopyrightText: 2026 Institutt for Energiteknikk (IFE)
+
+SPDX-License-Identifier: Apache-2.0
+#}
+
+{% extends "base.html" %}
+{% block title %}Groups{% endblock %}
+{% block extra_head %}
+<style>.cls{font-size:.65rem;padding:.1rem .4rem;border-radius:4px;background:var(--surface-3);color:var(--text-2);font-family:var(--mono)}
+.card-body{color:var(--text)} .small-table td{padding:.3rem .5rem;font-size:.8rem}</style>
+{% endblock %}
+{% block content %}
+<h1 class="page-title">Project groups</h1>
+<p class="page-subtitle mb-4">A group is a set of users, for example the members of one project or work package. Datasets restricted to a group are visible to its members (and to admins and the uploader), independent of organisation.
+{% if current_user.role != 'admin' %}You see the groups you belong to.{% endif %}</p>
+{% if error %}<div class="card mb-3"><div class="card-body" style="color:var(--red)">{{ error }}</div></div>{% endif %}
+<div class="row g-3">
+  <div class="col-lg-8 d-flex flex-column gap-3">
+  {% for g in groups %}
+    <div class="card"><div class="card-header d-flex justify-content-between align-items-center">
+      <span><i class="bi bi-people me-2"></i><b>{{ g.name }}</b> <span class="text-muted small">{{ g.description or '' }}</span></span>
+      <span class="small text-muted">{{ g.members|length }} members · {{ g.datasets }} datasets
+        {% if current_user.role == 'admin' %}<form method="post" action="/groups/{{ g.name }}/delete" class="d-inline"><button class="btn btn-ghost btn-sm" style="color:var(--red)" {% if g.datasets %}disabled title="still restricts datasets"{% endif %}>Delete</button></form>{% endif %}</span></div>
+      <div class="card-body">
+        <table class="w-100 small-table">
+        {% for m in g.members %}<tr><td class="mono">{{ m.username }}</td><td class="text-muted">{{ m.organization or '' }}</td>
+          <td>{% if m.is_manager %}<span class="cls">manager</span>{% endif %}</td>
+          <td class="text-end">{% if current_user.role == 'admin' or g.name in current_user.managed_groups %}
+            <form method="post" action="/groups/{{ g.name }}/members" class="d-inline"><input type="hidden" name="username" value="{{ m.username }}">
+              <input type="hidden" name="action" value="remove"><button class="btn btn-ghost btn-sm">Remove</button></form>{% endif %}</td></tr>
+        {% else %}<tr><td class="text-muted">No members yet.</td></tr>{% endfor %}
+        </table>
+        {% if current_user.role == 'admin' or g.name in current_user.managed_groups %}
+        <form method="post" action="/groups/{{ g.name }}/members" class="d-flex gap-2 mt-2">
+          <input class="form-control form-control-sm mono" name="username" placeholder="username" style="max-width:200px" required>
+          {% if current_user.role == 'admin' %}<label class="small d-flex align-items-center gap-1"><input type="checkbox" name="is_manager" value="1"> manager</label>{% endif %}
+          <input type="hidden" name="action" value="add"><button class="btn btn-ghost btn-sm">Add member</button></form>
+        {% endif %}
+      </div></div>
+  {% else %}
+    <div class="card"><div class="card-body text-muted">No groups yet.</div></div>
+  {% endfor %}
+  </div>
+  {% if current_user.role == 'admin' %}
+  <div class="col-lg-4"><form class="card" method="post" action="/groups"><div class="card-header">New group</div><div class="card-body">
+    <div class="mb-2"><label class="form-label">Name</label><input class="form-control mono" name="name" required pattern="[A-Za-z0-9][A-Za-z0-9_.\-]{1,62}" placeholder="project-a"></div>
+    <div class="mb-2"><label class="form-label">Description</label><input class="form-control" name="description"></div>
+    <button class="btn btn-brand btn-sm">Create group</button>
+    <div class="text-muted small mt-2">Group names cannot be changed later. Admins appoint managers, who can add and remove members. A group that still restricts datasets cannot be deleted.</div>
+  </div></form>
+  <div class="card mt-3"><div class="card-body small"><a href="/admin/shares"><i class="bi bi-link-45deg"></i> All sharing links</a></div></div></div>
+  {% endif %}
+</div>
+{% endblock %}

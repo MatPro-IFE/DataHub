@@ -1,0 +1,41 @@
+{#
+SPDX-FileCopyrightText: 2026 Institutt for Energiteknikk (IFE)
+
+SPDX-License-Identifier: Apache-2.0
+#}
+
+{% extends "base.html" %}
+{% block title %}Sweeps{% endblock %}
+{% block content %}
+<h1 class="page-title">Parameter sweeps</h1>
+<p class="page-subtitle mb-4">A sweep is a design space over schema parameters. DataHub measures how well linked datasets cover it and proposes the next runs.</p>
+<div class="row g-3">
+  <div class="col-lg-7"><div class="card"><div class="card-header">Sweeps</div><div class="card-body p-0">
+    {% if sweeps %}
+    <table class="dh-table w-100"><thead><tr><th>Name</th><th>Parameters</th><th>Objective</th><th>Datasets</th><th>Created</th></tr></thead><tbody>
+    {% for s in sweeps %}<tr><td><a href="/sweeps/{{ s.id }}">{{ s.name }}</a></td><td class="mono small">{{ s.param_ranges.keys()|join(', ') }}</td>
+      <td class="small">{% if s.objective_quantity %}{{ s.objective_goal }} {{ s.objective_quantity }}{% else %}-{% endif %}</td>
+      <td>{{ s.n_datasets }}</td><td class="small mono">{{ s.created_at[:16] }}</td></tr>{% endfor %}
+    </tbody></table>
+    {% else %}<div class="p-4 text-muted">No sweeps yet.</div>{% endif %}
+  </div></div></div>
+  {% if current_user.role in ('uploader','admin') %}
+  <div class="col-lg-5"><form class="card" method="post" action="/sweeps"><div class="card-header">New sweep</div><div class="card-body">
+    <div class="mb-2"><label class="form-label">Name</label><input class="form-control" name="name" required></div>
+    <div class="mb-2"><label class="form-label">Description</label><input class="form-control" name="description"></div>
+    <label class="form-label">Parameters and ranges</label>
+    <table class="w-100 small mb-2">
+    {% for p in SCHEMA.parameters if p.type in ('float','int','bool') %}
+      <tr><td><label><input type="checkbox" name="use_{{ p.name }}" {% if p.range %}checked{% endif %}> <span class="mono">{{ p.name }}</span></label></td>
+        <td><input class="form-control form-control-sm" name="min_{{ p.name }}" value="{{ p.range[0] if p.range else (0 if p.type=='bool' else '') }}" placeholder="min"></td>
+        <td><input class="form-control form-control-sm" name="max_{{ p.name }}" value="{{ p.range[1] if p.range else (1 if p.type=='bool' else '') }}" placeholder="max"></td></tr>
+    {% endfor %}
+    </table>
+    <div class="row g-2 mb-3"><div class="col-7"><label class="form-label">Objective quantity (optional)</label>
+      <select class="form-select" name="objective_quantity"><option value="">-</option>{% for q in SCHEMA.quantities %}<option value="{{ q.name }}">{{ q.label }}</option>{% endfor %}</select></div>
+      <div class="col-5"><label class="form-label">Goal</label><select class="form-select" name="objective_goal"><option>minimize</option><option>maximize</option></select></div></div>
+    <button class="btn btn-brand btn-sm">Create sweep</button>
+  </div></form></div>
+  {% endif %}
+</div>
+{% endblock %}

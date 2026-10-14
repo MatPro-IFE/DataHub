@@ -1,0 +1,656 @@
+{#
+SPDX-FileCopyrightText: 2026 Institutt for Energiteknikk (IFE)
+
+SPDX-License-Identifier: Apache-2.0
+#}
+
+{% extends "base.html" %}
+{% block title %}Admin Panel{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ── Admin layout ────────────────────────────────────────────── */
+.admin-tabs {
+  display: flex; gap: .25rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.5rem; overflow-x: auto; scrollbar-width: none;
+}
+.admin-tab {
+  display: flex; align-items: center; gap: .4rem;
+  padding: .55rem 1rem;
+  border-radius: var(--r-sm) var(--r-sm) 0 0;
+  border: 1px solid transparent;
+  border-bottom: none;
+  font-size: .82rem; font-weight: 500;
+  color: var(--text-2); cursor: pointer;
+  text-decoration: none; white-space: nowrap;
+  position: relative; bottom: -1px;
+  transition: color .12s, background .12s;
+}
+.admin-tab:hover  { color: var(--text); background: var(--surface-2); }
+.admin-tab.active {
+  color: var(--brand);
+  background: var(--surface);
+  border-color: var(--border);
+  border-bottom-color: var(--surface);
+}
+
+/* KPI cards */
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 1.25rem;
+  position: relative; overflow: hidden;
+  transition: transform .15s, box-shadow .15s;
+}
+.kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,.55); }
+.kpi-card::before {
+  content: ''; position: absolute; top: -20%; right: -15%;
+  width: 80px; height: 80px; border-radius: 50%;
+  background: var(--kpi-color, var(--brand)); opacity: .07; filter: blur(18px);
+}
+.kpi-num  { font-size: 2rem; font-weight: 700; letter-spacing: -.04em; color: var(--text); line-height: 1; }
+.kpi-sub  { font-size: .75rem; color: var(--text-3); margin-top: .35rem; font-weight: 500; text-transform: uppercase; letter-spacing: .05em; }
+.kpi-icon { position: absolute; top: 1.1rem; right: 1.1rem; font-size: 1.2rem; opacity: .35; }
+
+/* Sparkline */
+.sparkline-wrap { display: flex; align-items: flex-end; gap: 2px; height: 48px; }
+.spark-bar {
+  flex: 1; background: var(--brand-dim); border-radius: 3px 3px 0 0;
+  min-width: 4px; min-height: 3px;
+  transition: background .15s;
+  cursor: default;
+}
+.spark-bar:hover { background: var(--brand); }
+
+/* online dot pulse */
+.pulse-dot {
+  display: inline-block; width: 7px; height: 7px;
+  border-radius: 50%; background: #22c55e;
+  box-shadow: 0 0 6px rgba(34,197,94,.6);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:.5; transform:scale(1.25); }
+}
+
+/* data tables (admin) */
+.admin-table { width:100%; border-collapse:separate; border-spacing:0; }
+.admin-table th {
+  padding: .5rem .9rem; font-size: .7rem; font-weight: 600;
+  letter-spacing: .07em; text-transform: uppercase; color: var(--text-3);
+  background: var(--surface-2); border-bottom: 1px solid var(--border);
+}
+.admin-table td {
+  padding: .6rem .9rem; font-size: .82rem;
+  border-bottom: 1px solid var(--border); vertical-align: middle;
+  color: var(--text);
+}
+.admin-table tbody tr:hover { background: var(--surface-2); }
+.admin-table tbody tr:last-child td { border-bottom: none; }
+
+/* bar fill */
+.bar-wrap { height: 4px; background: var(--surface-3); border-radius: 99px; overflow: hidden; margin-top: 4px; }
+.bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--brand-dim), var(--brand)); }
+
+/* section scroll */
+.scroll-box { max-height: 340px; overflow-y: auto; }
+
+/* ── Custom modal (no Bootstrap modal dependency) ───────────── */
+.dh-modal-backdrop {
+  display: none;
+  position: fixed; inset: 0; z-index: 2000;
+  background: rgba(0,0,0,.65);
+  backdrop-filter: blur(4px);
+  align-items: center; justify-content: center;
+  padding: 1rem;
+}
+.dh-modal-backdrop.show { display: flex; }
+.dh-modal {
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-lg);
+  width: 100%; max-width: 440px;
+  animation: modal-in .18s ease;
+}
+@keyframes modal-in {
+  from { opacity:0; transform:scale(.95) translateY(8px); }
+  to   { opacity:1; transform:none; }
+}
+.dh-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1rem 1.25rem .75rem;
+  border-bottom: 1px solid var(--border);
+}
+.dh-modal-title { font-weight: 700; font-size: .95rem; color: var(--text); }
+.dh-modal-close {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-3); font-size: 1.1rem; padding: .2rem .4rem;
+  border-radius: var(--r-sm); transition: color .12s, background .12s;
+  line-height: 1;
+}
+.dh-modal-close:hover { color: var(--text); background: var(--surface-2); }
+.dh-modal-body   { padding: 1rem 1.25rem; }
+.dh-modal-footer {
+  display: flex; align-items: center; justify-content: flex-end; gap: .5rem;
+  padding: .75rem 1.25rem;
+  border-top: 1px solid var(--border);
+}
+</style>
+
+<!-- ── Add User modal ─────────────────────────────────────── -->
+<div id="addUserModal" class="dh-modal-backdrop">
+  <div class="dh-modal">
+    <div class="dh-modal-header">
+      <span class="dh-modal-title"><i class="bi bi-person-plus me-2" style="color:var(--brand)"></i>Add new user</span>
+      <button class="dh-modal-close" onclick="closeModal('addUserModal')" aria-label="Close">✕</button>
+    </div>
+    <form method="post" action="/admin/users">
+      <div class="dh-modal-body">
+        <div class="mb-3">
+          <label class="form-label">Username <span style="color:var(--red)">*</span></label>
+          <input name="username" type="text" required class="form-control"
+                 placeholder="e.g. alice" autocomplete="off">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Email</label>
+          <input name="email" type="email" class="form-control" id="newUserEmail"
+                 placeholder="alice@your-org.example"
+                 oninput="autoOrgFromEmail(this.value)">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Temporary password <span style="color:var(--red)">*</span></label>
+          <input name="password" type="password" required minlength="{{ MIN_PASSWORD_LEN }}" class="form-control"
+                 placeholder="Min {{ MIN_PASSWORD_LEN }} characters" autocomplete="new-password">
+          <div style="font-size:.72rem;color:var(--text-3);margin-top:.3rem">
+            <i class="bi bi-shield-check me-1" style="color:var(--brand)"></i>
+            User will be forced to change this on first login.
+          </div>
+        </div>
+        <div class="mb-1">
+          <label class="form-label">Role</label>
+          <select name="role" class="form-select">
+            <option value="viewer" selected>viewer — browse &amp; download only</option>
+            <option value="uploader">uploader — viewer + upload data</option>
+            <option value="admin">admin — full access + user management</option>
+          </select>
+        </div>
+        <div class="mb-1 mt-3">
+          <label class="form-label">Organization</label>
+          <select name="organization" class="form-select">
+            <option value="" selected>— not set —</option>
+            {% for org in ORGANIZATIONS %}<option value="{{ org }}">{{ org }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="dh-modal-footer">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="closeModal('addUserModal')">Cancel</button>
+        <button type="submit" class="btn btn-brand btn-sm">
+          <i class="bi bi-person-plus"></i>Create account
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Reset password modal ───────────────────────────────── -->
+<div id="resetPwdModal" class="dh-modal-backdrop">
+  <div class="dh-modal">
+    <div class="dh-modal-header">
+      <span class="dh-modal-title"><i class="bi bi-key me-2" style="color:var(--amber)"></i>Reset password — <span id="resetPwdUsername" style="color:var(--brand)"></span></span>
+      <button class="dh-modal-close" onclick="closeModal('resetPwdModal')" aria-label="Close">✕</button>
+    </div>
+    <form id="resetPwdForm" method="post">
+      <div class="dh-modal-body">
+        <label class="form-label">New password <span style="color:var(--red)">*</span></label>
+        <input name="new_password" type="password" required minlength="{{ MIN_PASSWORD_LEN }}" class="form-control"
+               placeholder="Min {{ MIN_PASSWORD_LEN }} characters">
+        <div style="font-size:.72rem;color:var(--text-3);margin-top:.4rem">
+          <i class="bi bi-shield-exclamation me-1" style="color:var(--amber)"></i>
+          User will be forced to change this on next login.
+        </div>
+      </div>
+      <div class="dh-modal-footer">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="closeModal('resetPwdModal')">Cancel</button>
+        <button type="submit" class="btn btn-brand btn-sm">
+          <i class="bi bi-check2"></i>Reset password
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<!-- Page header -->
+<div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-3">
+  <div>
+    <h1 class="page-title" style="display:flex;align-items:center;gap:.5rem">
+      <span style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#ef4444,#f97316);display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:#fff;flex-shrink:0"><i class="bi bi-shield-check"></i></span>
+      Admin Panel
+    </h1>
+    <p class="page-subtitle ms-1">
+      User management, activity monitoring, download analytics.
+      <a href="/groups" style="margin-left:.5rem"><i class="bi bi-people"></i> Project groups</a>
+      <a href="/admin/shares" style="margin-left:.5rem"><i class="bi bi-link-45deg"></i> Sharing links</a>
+      <span style="font-size:.72rem;color:var(--text-3);margin-left:.3rem">{{ tz_name }}</span>
+    </p>
+  </div>
+  <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+    <form method="post" action="/api/admin/expire-sessions">
+      <button class="btn btn-ghost btn-sm" title="Clear stale sessions">
+        <i class="bi bi-eraser"></i>Expire stale sessions
+      </button>
+    </form>
+    <button class="btn btn-ghost btn-sm" onclick="location.reload()">
+      <i class="bi bi-arrow-clockwise"></i>Refresh
+    </button>
+  </div>
+</div>
+
+<!-- KPI cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="kpi-card" style="--kpi-color:#22c55e">
+      <i class="bi bi-person-check kpi-icon" style="color:#22c55e"></i>
+      <div class="kpi-num" style="color:#22c55e">{{ active_sessions|length }}</div>
+      <div class="kpi-sub"><span class="pulse-dot me-1"></span>Online now</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card" style="--kpi-color:var(--accent)">
+      <i class="bi bi-people kpi-icon" style="color:var(--accent)"></i>
+      <div class="kpi-num" style="color:var(--accent)">{{ total_users }}</div>
+      <div class="kpi-sub">Registered users</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card" style="--kpi-color:var(--amber)">
+      <i class="bi bi-download kpi-icon" style="color:var(--amber)"></i>
+      <div class="kpi-num" style="color:var(--amber)">{{ today_dl_count }}</div>
+      <div class="kpi-sub">Downloads today · {{ today_dl_bytes }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card" style="--kpi-color:var(--blue)">
+      <i class="bi bi-cloud-download kpi-icon" style="color:#60a5fa"></i>
+      <div class="kpi-num" style="color:#60a5fa">{{ total_dl_count }}</div>
+      <div class="kpi-sub">Total downloads · {{ total_dl_bytes }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab navigation -->
+<div class="admin-tabs">
+  <a href="#activity" class="admin-tab active" data-tab="activity">
+    <i class="bi bi-activity"></i>Activity
+  </a>
+  <a href="#users" class="admin-tab" data-tab="users">
+    <i class="bi bi-people"></i>Users
+    <span style="background:var(--surface-3);border:1px solid var(--border-2);border-radius:99px;font-size:.65rem;padding:.1rem .45rem;color:var(--text-3)">{{ total_users }}</span>
+  </a>
+  <a href="#downloads" class="admin-tab" data-tab="downloads">
+    <i class="bi bi-clock-history"></i>Download log
+  </a>
+  <a href="#top-files" class="admin-tab" data-tab="top-files">
+    <i class="bi bi-trophy"></i>Top files
+  </a>
+</div>
+
+<!-- ────────────────── TAB: Activity ────────────────── -->
+<div class="tab-panel" id="panel-activity">
+
+  <!-- Sparkline -->
+  {% if dl_by_day %}
+  <div class="card mb-4">
+    <div class="card-header">Downloads last 14 days</div>
+    <div class="card-body" style="padding:1.25rem">
+      {% set max_cnt = dl_by_day | map(attribute='cnt') | max %}
+      <div class="sparkline-wrap">
+        {% for d in dl_by_day %}
+        {% set pct = ((d.cnt / max_cnt) * 100) | int if max_cnt > 0 else 0 %}
+        <div class="spark-bar" style="height:{{ [pct, 5] | max }}%"
+             title="{{ d.day }}: {{ d.cnt }} download(s)"></div>
+        {% endfor %}
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--text-3);margin-top:.5rem">
+        <span>{{ dl_by_day[0].day }}</span>
+        <span>{{ dl_by_day[-1].day }}</span>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Online users -->
+  <div class="card mb-4">
+    <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+      <span><span class="pulse-dot me-2"></span>Currently online
+        <span style="background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.25);border-radius:99px;font-size:.7rem;padding:.1rem .45rem;margin-left:.4rem">{{ active_sessions|length }}</span>
+      </span>
+    </div>
+    {% if active_sessions %}
+    <div class="scroll-box">
+      <table class="admin-table">
+        <thead><tr>
+          <th>User</th><th>Role</th><th>IP</th><th>Last activity</th><th>Idle</th>
+        </tr></thead>
+        <tbody>
+        {% for s in active_sessions %}
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:.5rem">
+              <div style="width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,var(--accent),var(--brand));display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#fff;flex-shrink:0">{{ s.username[0].upper() }}</div>
+              <strong>{{ s.username }}</strong>
+            </div>
+          </td>
+          <td><span class="role-badge role-{{ s.role }}">{{ s.role }}</span></td>
+          <td style="font-family:var(--mono);font-size:.76rem;color:var(--text-2)">{{ s.ip_address or '—' }}</td>
+          <td style="font-size:.76rem;color:var(--text-2)">
+            {% set ts = s.last_seen_at or s.logged_in_at or s.last_login %}
+            {{ ts | localdt if ts else '—' }}
+          </td>
+          <td style="font-size:.76rem">
+            {% set mins = s.minutes_ago | int if s.minutes_ago else 0 %}
+            {% if mins < 1 %}<span style="color:#22c55e">just now</span>
+            {% elif mins < 60 %}<span style="color:var(--text-2)">{{ mins }}m ago</span>
+            {% else %}<span style="color:var(--text-3)">{{ (mins/60)|int }}h {{ mins % 60 }}m</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="bi bi-moon-stars"></i><h6>No active sessions</h6><p>No one is currently online.</p></div>
+    {% endif %}
+  </div>
+
+  <!-- Per-user download summary -->
+  {% if user_dl_stats %}
+  <div class="card">
+    <div class="card-header">Downloads by user</div>
+    <div class="scroll-box">
+      <table class="admin-table">
+        <thead><tr><th>User</th><th style="text-align:right">Count</th><th>Volume</th><th>Last download</th></tr></thead>
+        <tbody>
+        {% set max_bytes = user_dl_stats[0].total_bytes | int %}
+        {% for u in user_dl_stats %}
+        <tr>
+          <td><strong>{{ u.username }}</strong></td>
+          <td style="text-align:right;font-family:var(--mono)">{{ u.total_downloads }}</td>
+          <td style="min-width:130px">
+            <span style="font-size:.76rem;color:var(--text-2)">{{ fmt_bytes(u.total_bytes) }}</span>
+            <div class="bar-wrap"><div class="bar-fill" style="width:{{ ((u.total_bytes / max_bytes) * 100) | int if max_bytes > 0 else 0 }}%"></div></div>
+          </td>
+          <td style="font-size:.76rem;color:var(--text-2)">{{ u.last_download | localdt('%m-%d %H:%M') if u.last_download else '—' }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- ────────────────── TAB: Users ────────────────── -->
+<div class="tab-panel d-none" id="panel-users">
+
+  {% if msg_users %}
+  <div class="alert alert-success d-flex align-items-center gap-2 py-2 mb-3">
+    <i class="bi bi-check-circle-fill"></i>{{ msg_users }}
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;text-transform:none;font-size:.82rem;letter-spacing:0">
+      <span style="color:var(--text-2)">
+        <span style="color:var(--text);font-weight:600">{{ users|length }}</span> registered users
+      </span>
+      <button class="btn btn-brand btn-sm" onclick="openAddUser()">
+        <i class="bi bi-person-plus"></i>Add user
+      </button>
+    </div>
+    <div class="scroll-box" style="max-height:500px">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Organization</th>
+            <th>Status</th>
+            <th>Last login</th>
+            <th>Created</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for u in users %}
+        <tr id="row-{{ u.id }}" {% if not u.is_active %}style="opacity:.45"{% endif %}>
+          <td>
+            <div style="display:flex;align-items:center;gap:.5rem">
+              <div style="width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,var(--accent),var(--brand));display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#fff;flex-shrink:0">{{ u.username[0].upper() }}</div>
+              <div>
+                <div style="font-weight:600">{{ u.username }}
+                  {% if u.id == current_user.id %}<span style="font-size:.65rem;color:var(--text-3);margin-left:.25rem">(you)</span>{% endif %}
+                </div>
+                {% if u.must_change_password %}
+                <div style="font-size:.65rem;color:var(--amber)"><i class="bi bi-exclamation-triangle me-1"></i>must change password</div>
+                {% endif %}
+              </div>
+            </div>
+          </td>
+          <td style="font-size:.78rem;color:var(--text-2)">{{ u.email or '—' }}</td>
+          <td>
+            {% if u.id != current_user.id %}
+            <form method="post" action="/admin/users/{{ u.id }}/role" style="display:inline">
+              <select name="role" class="per-page-select" onchange="this.form.submit()" title="Change role">
+                {% for r in ['viewer','uploader','admin'] %}
+                <option value="{{ r }}" {% if u.role == r %}selected{% endif %}>{{ r }}</option>
+                {% endfor %}
+              </select>
+            </form>
+            {% else %}
+            <span class="role-badge role-{{ u.role }}">{{ u.role }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <form method="post" action="/admin/users/{{ u.id }}/org" style="display:inline">
+              <select name="organization" class="per-page-select" onchange="this.form.submit()" title="Set organization">
+                <option value="">—</option>
+                {% for org in ORGANIZATIONS %}
+                <option value="{{ org }}" {% if u.organization == org %}selected{% endif %}>{{ org }}</option>
+                {% endfor %}
+              </select>
+            </form>
+          </td>
+          <td>
+            {% if u.is_active %}
+            <span style="display:inline-flex;align-items:center;gap:.3rem;font-size:.75rem;color:#22c55e">
+              <span style="width:6px;height:6px;border-radius:50%;background:#22c55e;flex-shrink:0"></span>Active
+            </span>
+            {% else %}
+            <span style="font-size:.75rem;color:var(--text-3)">Inactive</span>
+            {% endif %}
+          </td>
+          <td style="font-size:.76rem;color:var(--text-2)">{{ u.last_login | localdt('%Y-%m-%d %H:%M') if u.last_login else '—' }}</td>
+          <td style="font-size:.76rem;color:var(--text-2)">{{ u.created_at | localdt('%Y-%m-%d') if u.created_at else '—' }}</td>
+          <td>
+            {% if u.id != current_user.id %}
+            <div style="display:flex;gap:.25rem;justify-content:flex-end">
+              <form method="post" action="/admin/users/{{ u.id }}/toggle" style="display:inline">
+                <button class="btn btn-ghost btn-sm" title="{% if u.is_active %}Deactivate{% else %}Activate{% endif %}">
+                  <i class="bi {% if u.is_active %}bi-pause-circle{% else %}bi-play-circle{% endif %}" style="font-size:.8rem"></i>
+                </button>
+              </form>
+              <button class="btn btn-ghost btn-sm" title="Reset password"
+                      onclick="openResetPwd('{{ u.id }}','{{ u.username }}')">
+                <i class="bi bi-key" style="font-size:.8rem"></i>
+              </button>
+              <button class="btn btn-ghost btn-sm" title="Delete user"
+                      onclick="deleteUser('{{ u.id }}','{{ u.username }}')"
+                      style="color:var(--red)">
+                <i class="bi bi-trash" style="font-size:.8rem"></i>
+              </button>
+            </div>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- ────────────────── TAB: Download log ────────────────── -->
+<div class="tab-panel d-none" id="panel-downloads">
+  <div class="card">
+    <div class="card-header">Recent downloads <span style="font-size:.7rem;color:var(--text-3);margin-left:.4rem">last 100 events</span></div>
+    {% if recent_downloads %}
+    <div class="scroll-box" style="max-height:500px">
+      <table class="admin-table">
+        <thead><tr><th>Time</th><th>User</th><th>File</th><th style="text-align:right">Size</th></tr></thead>
+        <tbody>
+        {% for d in recent_downloads %}
+        <tr>
+          <td style="font-family:var(--mono);font-size:.74rem;color:var(--text-2);white-space:nowrap">
+            {{ d.downloaded_at | localdt('%Y-%m-%d %H:%M') if d.downloaded_at else '—' }}
+          </td>
+          <td><strong>{{ d.username }}</strong></td>
+          <td style="font-family:var(--mono);font-size:.76rem" title="{{ d.object_key }}">
+            {{ (d.filename or d.object_key or '—') | truncate(52, True, '…') }}
+          </td>
+          <td style="text-align:right;font-size:.76rem;color:var(--text-2);font-family:var(--mono);white-space:nowrap">
+            {{ fmt_bytes(d.size_bytes) if d.size_bytes else '—' }}
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="bi bi-inbox"></i><h6>No download events yet</h6><p>Events appear here after users start downloading files.</p></div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ────────────────── TAB: Top files ────────────────── -->
+<div class="tab-panel d-none" id="panel-top-files">
+  {% if top_files %}
+  <div class="card">
+    <div class="card-header">Most downloaded files</div>
+    {% set max_f = top_files[0].downloads %}
+    <div class="scroll-box" style="max-height:500px">
+      <table class="admin-table">
+        <thead><tr><th>#</th><th>Filename</th><th style="text-align:right">Downloads</th><th>Volume</th><th>Popularity</th></tr></thead>
+        <tbody>
+        {% for f in top_files %}
+        <tr>
+          <td style="color:var(--text-3);font-size:.75rem">{{ loop.index }}</td>
+          <td style="font-family:var(--mono);font-size:.78rem" title="{{ f.filename }}">
+            {{ f.filename | truncate(55, True, '…') if f.filename else '—' }}
+          </td>
+          <td style="text-align:right;font-family:var(--mono)">{{ f.downloads }}</td>
+          <td style="font-size:.76rem;color:var(--text-2)">{{ fmt_bytes(f.total_bytes) }}</td>
+          <td style="min-width:100px">
+            <div class="bar-wrap"><div class="bar-fill" style="width:{{ ((f.downloads / max_f) * 100) | int if max_f > 0 else 0 }}%"></div></div>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="empty-state" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg)">
+    <i class="bi bi-trophy"></i><h6>No data yet</h6>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Tab switching
+document.querySelectorAll('.admin-tab').forEach(tab => {
+  tab.addEventListener('click', e => {
+    e.preventDefault();
+    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('d-none'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.remove('d-none');
+    history.replaceState(null, '', tab.getAttribute('href'));
+  });
+});
+// Restore active tab from hash
+const hash = location.hash.replace('#','');
+if (hash) {
+  const t = document.querySelector('[data-tab="' + hash + '"]');
+  if (t) t.click();
+}
+// Auto-refresh every 60s
+setTimeout(() => location.reload(), 60000);
+
+// ── Modal helpers ────────────────────────────────────────────────
+function openAddUser() {
+  const el = document.getElementById('addUserModal');
+  el.classList.add('show');
+  el.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  el.querySelector('[name="username"]').focus();
+}
+function closeModal(id) {
+  const el = document.getElementById(id);
+  el.classList.remove('show');
+  el.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function openResetPwd(userId, username) {
+  document.getElementById('resetPwdUsername').textContent = username;
+  document.getElementById('resetPwdForm').action = `/admin/users/${userId}/password`;
+  const el = document.getElementById('resetPwdModal');
+  el.classList.add('show');
+  el.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  el.querySelector('[name="new_password"]').focus();
+}
+
+// Close modal on backdrop click
+document.querySelectorAll('.dh-modal-backdrop').forEach(bd => {
+  bd.addEventListener('click', function(e) {
+    if (e.target === this) closeModal(this.id);
+  });
+});
+
+async function deleteUser(userId, username) {
+  if (!confirm(`Permanently delete user "${username}"?\nThis cannot be undone.`)) return;
+  const res = await fetch(`/admin/users/${userId}`, { method: 'DELETE' });
+  if (res.ok) {
+    const row = document.getElementById(`row-${userId}`);
+    if (row) row.remove();
+  } else {
+    const data = await res.json().catch(() => ({}));
+    alert('Error: ' + (data.detail || 'Could not delete user'));
+  }
+}
+
+const _domainOrg = {{ ORG_EMAIL_DOMAINS | tojson | safe }};
+function autoOrgFromEmail(email) {
+  const sel = document.querySelector('#addUserModal select[name="organization"]');
+  if (!sel || !email.includes('@')) return;
+  const domain = email.split('@').pop().toLowerCase();
+  const org = _domainOrg[domain];
+  if (org) sel.value = org;
+}
+</script>
+{% endblock %}

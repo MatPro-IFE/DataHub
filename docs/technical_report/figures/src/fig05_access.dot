@@ -1,0 +1,25 @@
+digraph A {
+  graph [rankdir=TB, fontname="Fira Sans", nodesep=0.3, ranksep=0.22, pad=0.2];
+  node  [fontname="Fira Sans", fontsize=12, color="#411454", style=filled, fillcolor="#F4EFFA"];
+  edge  [fontname="Fira Sans", fontsize=11, color="#5E5566", arrowsize=0.6];
+  req  [shape=box, style="rounded,filled", label="Request to view or download a dataset or file", fillcolor="white"];
+  link [shape=diamond, label="Sharing link\n/s/<token>?"];
+  lval [shape=diamond, label="Token known, not expired,\nrevoked or used up?"];
+  auth [shape=diamond, label="Valid session?"];
+  admin[shape=diamond, label="Admin or\nuploader?"];
+  open [shape=diamond, label="No organisations\nand no groups listed?"];
+  org  [shape=diamond, label="User organisation\nin allowed_orgs?"];
+  grp  [shape=diamond, label="User in a group\nin allowed_groups?"];
+  hid  [shape=diamond, label="File class hidden for the\norganisation of the user\nor link creator?"];
+  ok   [shape=box, style="rounded,filled", label="Allow (downloads are logged)", fillcolor="#EAE1F6", color="#6B4C9A"];
+  no   [shape=box, style="rounded,filled", label="Deny: 403, 404 or 410,\nor redirect to login", fillcolor="#FDE7E8", color="#E20613"];
+  req -> link;
+  link -> lval [label="yes"]; link -> auth [label="no"];
+  lval -> hid [label="yes"]; lval -> no [label="no"];
+  auth -> no [label="no"]; auth -> admin [label="yes"];
+  admin -> ok [label="yes"]; admin -> open [label="no"];
+  open -> hid [label="yes"]; open -> org [label="no"];
+  org -> hid [label="yes"]; org -> grp [label="no"];
+  grp -> hid [label="yes"]; grp -> no [label="no"];
+  hid -> no [label="yes"]; hid -> ok [label="no"];
+}

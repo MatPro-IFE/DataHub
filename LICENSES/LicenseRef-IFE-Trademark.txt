@@ -1,0 +1,12 @@
+IFE trademarks
+
+The name "Institute for Energy Technology", "Institutt for Energiteknikk", "IFE",
+the IFE logo and the IFE grid graphic (docs/technical_report/brand/logo/) are
+trademarks of Institutt for Energiteknikk, Norway.
+
+They are included only so that the technical report can be rebuilt in its
+published form. They are not licensed under the Apache License 2.0 or under
+CC BY 4.0. Any other use, including use in modified versions of the report or
+the software, requires prior written permission from Institutt for Energiteknikk.
+Remove the files in docs/technical_report/brand/logo/ and the references in
+docs/technical_report/latex/ when you create a derived work.

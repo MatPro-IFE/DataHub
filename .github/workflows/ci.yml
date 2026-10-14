@@ -1,0 +1,44 @@
+# SPDX-FileCopyrightText: 2026 Institutt for Energiteknikk (IFE)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: CI
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: Byte-compile all Python sources
+        run: python -m compileall -q datahub_sdk dashboard ml-api examples
+      - name: Install SDK and build demo data
+        run: |
+          pip install -e ".[demo,fields,test]" meshio netCDF4
+          datahub check-schema config/schema.example.yaml
+          python examples/make_demo_dataset.py --out demo_data --runs 2 --cases 8 --experiments 1
+          datahub preview demo_data/simulations/run_001 --schema config/schema.example.yaml --type simulation
+          datahub fields demo_data/formats/run_001_xdmf/stage_1/fields.xdmf --schema config/schema.example.yaml
+          datahub fields demo_data/formats/run_001_exodus/stage_1/result.exo --schema config/schema.example.yaml
+      - name: Field reader tests
+        run: python -m pytest -q tests
+      - name: Licence compliance (REUSE)
+        run: |
+          pip install reuse
+          reuse lint
+      - name: Security scans (static analysis, known vulnerabilities in dependencies)
+        run: |
+          pip install bandit pip-audit
+          bandit -q -r dashboard ml-api datahub_sdk -ll
+          pip-audit -r dashboard/requirements.txt -r ml-api/requirements.txt --progress-spinner off
+      - name: Validate Compose file
+        run: |
+          cp docker/.env.example docker/.env
+          cp config/schema.example.yaml config/schema.yaml
+          sed -i 's/<[^>]*>/ci-placeholder-value-0123456789abcdef/g' docker/.env
+          docker compose -f docker/docker-compose.yml --env-file docker/.env config -q
+      - name: Secret scan (no .env committed)
+        run: test ! -f docker/.env.committed && ! git ls-files | grep -E '(^|/)\.env$'

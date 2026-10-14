@@ -1,0 +1,56 @@
+{#
+SPDX-FileCopyrightText: 2026 Institutt for Energiteknikk (IFE)
+
+SPDX-License-Identifier: Apache-2.0
+#}
+
+{% extends "base.html" %}
+{% block title %}{{ sw.name }}{% endblock %}
+{% block extra_head %}
+<style>.bar{height:8px;background:var(--surface-3);border-radius:4px;position:relative}
+.bar i{position:absolute;top:0;bottom:0;background:var(--brand);border-radius:4px}
+.small-table td,.small-table th{padding:.3rem .6rem;font-size:.76rem}
+.cls{font-size:.65rem;padding:.1rem .4rem;border-radius:4px;background:var(--surface-3);color:var(--text-2);font-family:var(--mono)}</style>
+{% endblock %}
+{% block content %}
+<nav class="breadcrumb mb-2"><a href="/sweeps">Sweeps</a>&nbsp;/&nbsp;<span class="text-muted">{{ sw.name }}</span></nav>
+<h1 class="page-title">{{ sw.name }}</h1>
+<p class="page-subtitle mb-4">{% if sw.description %}{{ sw.description }} · {% endif %}{% if sw.objective_quantity %}objective: {{ sw.objective_goal }} <span class="mono">{{ sw.objective_quantity }}</span> · {% endif %}{{ sw.datasets|length }} linked datasets</p>
+<div class="row g-3">
+  <div class="col-lg-6"><div class="card"><div class="card-header d-flex justify-content-between"><span>Coverage</span>
+    <span class="small text-muted">extent {{ '%.2f'|format(cov.extent_score) }}{% if cov.discrepancy is not none %} · discrepancy {{ '%.3g'|format(cov.discrepancy) }}{% endif %}{% if cov.fill_distance is not none %} · fill distance {{ '%.3f'|format(cov.fill_distance) }}{% endif %}</span></div>
+    <div class="card-body">
+    {% for k, d in cov.dimensions.items() %}
+      <div class="d-flex justify-content-between small"><span class="mono">{{ k }}</span>
+        <span class="text-muted">{% if d.observed %}{{ fmt_value(d.observed[0]) }} to {{ fmt_value(d.observed[1]) }}{% else %}no data{% endif %} of {{ fmt_value(d.range[0]) }} to {{ fmt_value(d.range[1]) }} · {{ d.n_unique }} unique</span></div>
+      {% set lo = ((d.observed[0]-d.range[0])/(d.range[1]-d.range[0])*100) if d.observed else 0 %}
+      <div class="bar mb-2"><i style="left:{{ lo }}%;width:{{ d.extent*100 }}%"></i></div>
+    {% endfor %}
+    <div class="text-muted small mt-2">Extent: share of each range spanned. Discrepancy: uniformity of the scaled design (lower is better). Fill distance: radius of the largest empty ball in the unit cube (lower is better).</div>
+    </div></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-header">Next-run suggestions</div><div class="card-body">
+    {% if current_user.role in ('uploader','admin') %}
+    <form method="post" action="/sweeps/{{ sw.id }}/suggest" class="d-flex gap-2 mb-3">
+      <select class="form-select form-select-sm" name="method" style="max-width:220px">
+        <option value="sobol">Sobol (space filling)</option><option value="lhs">Latin hypercube</option><option value="random">Random</option>
+        <option value="gp_uncertainty">GP, largest uncertainty</option><option value="gp_ei">GP, expected improvement</option></select>
+      <input class="form-control form-control-sm" name="n" value="5" style="max-width:70px">
+      <button class="btn btn-brand btn-sm">Suggest</button></form>
+    {% endif %}
+    <table class="w-100 small-table">
+    {% for s in sw.suggestions[:20] %}<tr><td><span class="cls">{{ s.method }}</span></td>
+      <td class="mono">{% for k, v in s.suggested_params.items() %}{{ k }}={{ fmt_short(v) }} {% endfor %}</td>
+      <td>{% if s.used %}<span class="text-muted">used</span>{% elif current_user.role in ('uploader','admin') %}
+        <form method="post" action="/sweeps/{{ sw.id }}/suggestions/{{ s.id }}/use"><button class="btn btn-ghost btn-sm">mark used</button></form>{% endif %}</td></tr>
+    {% else %}<tr><td class="text-muted">No suggestions yet.</td></tr>{% endfor %}
+    </table></div></div></div>
+  <div class="col-12"><div class="card"><div class="card-header d-flex justify-content-between align-items-center"><span>Linked datasets</span>
+    {% if current_user.role in ('uploader','admin') %}<form method="post" action="/sweeps/{{ sw.id }}/link" class="d-flex gap-2">
+      <input class="form-control form-control-sm mono" name="dataset" placeholder="name, id or pattern with *" style="width:280px"><button class="btn btn-ghost btn-sm">Link</button></form>{% endif %}</div>
+    <div class="card-body p-0"><table class="dh-table w-100 small-table"><thead><tr><th>Dataset</th>{% for k in sw.param_ranges %}<th>{{ k }}</th>{% endfor %}{% if sw.objective_quantity %}<th>{{ sw.objective_quantity }}</th>{% endif %}</tr></thead><tbody>
+    {% for d in sw.datasets %}<tr><td><a href="/dataset/{{ d.id }}" class="mono">{{ d.name }}</a></td>
+      {% for k in sw.param_ranges %}<td class="mono">{{ fmt_value(d.parameters.get(k)) }}</td>{% endfor %}
+      {% if sw.objective_quantity %}<td class="mono">{{ fmt_value(d.objective) }}</td>{% endif %}</tr>{% endfor %}
+    </tbody></table></div></div></div>
+</div>
+{% endblock %}

@@ -1,0 +1,110 @@
+{#
+SPDX-FileCopyrightText: 2026 Institutt for Energiteknikk (IFE)
+
+SPDX-License-Identifier: Apache-2.0
+#}
+
+{% extends "base.html" %}
+{% block title %}Datasets{% endblock %}
+{% block extra_head %}
+<style>
+.type-chip{font-size:.62rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;padding:.12rem .4rem;border-radius:4px;
+  background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.25);margin-left:.4rem;vertical-align:middle}
+.ds-link{color:var(--text);font-family:var(--mono);font-size:.8rem}.ds-link:hover{color:var(--brand)}
+.search-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:1.1rem;margin-bottom:1.5rem}
+.org-lock{font-size:.6rem;font-weight:600;text-transform:uppercase;padding:.1rem .35rem;border-radius:4px;background:rgba(251,191,36,.08);
+  color:var(--amber);border:1px solid rgba(251,191,36,.2);margin-left:.35rem}
+.pg-bar{display:flex;justify-content:space-between;align-items:center;padding:.65rem 1rem;border-top:1px solid var(--border);font-size:.78rem;color:var(--text-3)}
+.dh-table td.nw{white-space:nowrap}
+.param-cell{font-family:var(--mono);font-size:.72rem;color:var(--text-2);max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+</style>
+{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+  <div>
+    <h1 class="page-title">Datasets</h1>
+    <p class="page-subtitle">{{ SITE_NAME }} · {{ total }} matching · {{ sizes.f }} files · {{ human_size(sizes.b) }}</p>
+  </div>
+  {% if current_user.role in ('uploader','admin') %}
+  <a href="/upload" class="btn btn-brand btn-md"><i class="bi bi-cloud-arrow-up"></i>Upload</a>
+  {% endif %}
+</div>
+
+<div class="row g-3 mb-4">
+  {% for t in SCHEMA.dataset_types %}
+  <div class="col-6 col-md-3">
+    <a href="/?type={{ t.id }}" style="text-decoration:none">
+    <div class="stat-card"><i class="bi bi-collection stat-icon" style="color:var(--accent)"></i>
+      <div class="stat-num">{{ by_type.get(t.id, 0) }}</div><div class="stat-label">{{ t.label }}</div></div></a>
+  </div>
+  {% endfor %}
+</div>
+
+<form class="search-panel" method="get" action="/">
+  <div class="row g-2 align-items-end">
+    <div class="col-md-4"><label class="form-label">Full-text search</label>
+      <input class="form-control" name="q" value="{{ f.q }}" placeholder="name, tag, notes, metadata ..."></div>
+    <div class="col-md-2"><label class="form-label">Type</label>
+      <select class="form-select" name="type"><option value="">All types</option>
+        {% for t in SCHEMA.dataset_types %}<option value="{{ t.id }}" {% if f.type==t.id %}selected{% endif %}>{{ t.label }}</option>{% endfor %}
+      </select></div>
+    <div class="col-md-2"><label class="form-label">Status</label>
+      <select class="form-select" name="status"><option value="">All</option>
+        {% for s in ['completed','running','failed','registered','unknown'] %}<option {% if f.status==s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+      </select></div>
+    <div class="col-md-2"><label class="form-label">Tag</label><input class="form-control" name="tag" value="{{ f.tag }}"></div>
+    <div class="col-md-2 d-flex gap-2"><button class="btn btn-brand btn-sm w-100"><i class="bi bi-search"></i>Search</button>
+      <a href="/" class="btn btn-ghost btn-sm">Clear</a></div>
+  </div>
+  <div class="row g-2 align-items-end mt-1">
+    <div class="col-md-3"><label class="form-label">Parameter</label>
+      <select class="form-select" name="param"><option value="">-</option>
+        {% for p in SCHEMA.parameters %}<option value="{{ p.name }}" {% if f.param==p.name %}selected{% endif %}>{{ p.label }}{% if p.unit %} [{{ p.unit }}]{% endif %}</option>{% endfor %}
+      </select></div>
+    <div class="col-md-1"><label class="form-label">&nbsp;</label>
+      <select class="form-select" name="op">{% for o,s in [('eq','='),('ne','≠'),('gt','>'),('ge','≥'),('lt','<'),('le','≤')] %}<option value="{{ o }}" {% if f.op==o %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></div>
+    <div class="col-md-2"><label class="form-label">Value</label><input class="form-control" name="value" value="{{ f.value }}"></div>
+    <div class="col-md-3"><label class="form-label">Quantity of interest</label>
+      <select class="form-select" name="quantity"><option value="">-</option>
+        {% for q in SCHEMA.quantities %}<option value="{{ q.name }}" {% if f.quantity==q.name %}selected{% endif %}>{{ q.label }}{% if q.unit %} [{{ q.unit }}]{% endif %}</option>{% endfor %}
+      </select></div>
+    <div class="col-md-1"><label class="form-label">&nbsp;</label>
+      <select class="form-select" name="qop">{% for o,s in [('gt','>'),('ge','≥'),('lt','<'),('le','≤'),('eq','=')] %}<option value="{{ o }}" {% if f.qop==o %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></div>
+    <div class="col-md-2"><label class="form-label">Value</label><input class="form-control" name="qvalue" value="{{ f.qvalue }}"></div>
+  </div>
+  {% if error %}<div class="alert alert-danger mt-3 mb-0">{{ error }}</div>{% endif %}
+</form>
+
+<div class="card">
+  <div class="card-body p-0">
+  {% if rows %}
+  <table class="dh-table w-100">
+    <thead><tr><th>Dataset</th><th>Status</th><th>Parameters</th><th>Parts</th><th>Files</th><th>Size</th><th>Created</th><th>Tags</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+    <tr>
+      <td><a class="ds-link" href="/dataset/{{ r.id }}">{{ r.name }}</a>
+        <span class="type-chip">{{ r.dataset_type }}</span>
+        {% if r.allowed_orgs or r.allowed_groups %}{% set acc = r.allowed_orgs + r.allowed_groups %}<span class="org-lock" title="Restricted to {{ acc|join(', ') }}"><i class="bi bi-lock"></i> {{ acc|join(', ') }}</span>{% endif %}</td>
+      <td><span class="badge-status badge-{{ r.status if r.status in ['completed','running','failed'] else 'unknown' }}">{{ r.status }}</span></td>
+      <td class="param-cell" title="{{ r.parameters|tojson }}">{% for p in SCHEMA.parameters if p.name in r.parameters %}{{ p.name }}={{ fmt_short(r.parameters[p.name]) }}{% if not loop.last %}, {% endif %}{% endfor %}</td>
+      <td>{{ r.part_count or '-' }}</td><td>{{ r.file_count }}</td><td class="mono nw">{{ human_size(r.total_bytes) }}</td>
+      <td class="mono nw">{{ r.created_at|localdt("%Y-%m-%d") }}</td>
+      <td class="nw">{% for t in r.tags[:3] %}<a class="tag-pill" href="/?tag={{ t }}">{{ t }}</a> {% endfor %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <div class="pg-bar"><span>Page {{ page }} of {{ pages }} · {{ total }} datasets</span>
+    <span class="d-flex gap-2">
+      {% set qs = 'q=' ~ (f.q|urlencode) ~ '&type=' ~ f.type ~ '&status=' ~ f.status ~ '&tag=' ~ (f.tag|urlencode) ~ '&param=' ~ f.param ~ '&op=' ~ f.op ~ '&value=' ~ (f.value|urlencode) ~ '&quantity=' ~ f.quantity ~ '&qop=' ~ f.qop ~ '&qvalue=' ~ (f.qvalue|urlencode) ~ '&per_page=' ~ per_page %}
+      {% if page > 1 %}<a class="btn btn-ghost btn-sm" href="/?{{ qs }}&page={{ page-1 }}">Previous</a>{% endif %}
+      {% if page < pages %}<a class="btn btn-ghost btn-sm" href="/?{{ qs }}&page={{ page+1 }}">Next</a>{% endif %}
+      <a class="btn btn-ghost btn-sm" href="/api/datasets?{{ qs }}&limit=1000"><i class="bi bi-filetype-json"></i>JSON</a>
+    </span></div>
+  {% else %}
+  <div class="empty-state p-5 text-center text-muted">No datasets match. {% if current_user.role in ('uploader','admin') %}<a href="/upload">Upload one</a>.{% endif %}</div>
+  {% endif %}
+  </div>
+</div>
+{% endblock %}

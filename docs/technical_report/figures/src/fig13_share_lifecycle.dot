@@ -1,0 +1,17 @@
+digraph S {
+  graph [rankdir=LR, fontname="Fira Sans", nodesep=0.35, ranksep=0.55, pad=0.2];
+  node  [shape=box, style="rounded,filled", fontname="Fira Sans", fontsize=12, color="#411454", fillcolor="#F4EFFA"];
+  edge  [fontname="Fira Sans", fontsize=10.5, color="#5E5566", arrowsize=0.6];
+  create  [label="Create\nuploader or admin;\nlifetime ≤ maximum,\noptional download limit", fillcolor="white"];
+  active  [label="Active\npage, metadata,\nfiles, archive", fillcolor="#EAE1F6", color="#6B4C9A"];
+  expired [label="Expired", fillcolor="#FDE7E8", color="#E20613"];
+  used    [label="Used up", fillcolor="#FDE7E8", color="#E20613"];
+  revoked [label="Revoked", fillcolor="#FDE7E8", color="#E20613"];
+  gone    [label="Removed with\nthe dataset", fillcolor="#F1EEF2", color="#5E5566"];
+  create -> active [label="token shown once;\nSHA-256 stored"];
+  active -> active [label="download\n(counted, logged)"];
+  active -> expired [label="expires_at passed"];
+  active -> used [label="limit reached"];
+  active -> revoked [label="owner or admin"];
+  {expired used revoked} -> gone [style=dashed];
+}

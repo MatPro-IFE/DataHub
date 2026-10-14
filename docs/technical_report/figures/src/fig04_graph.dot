@@ -1,0 +1,18 @@
+digraph K {
+  graph [layout=neato, overlap=false, splines=true, fontname="Fira Sans", pad=0.2, sep="+18"];
+  node  [shape=ellipse, style=filled, fontname="Fira Sans", fontsize=10, penwidth=1.2];
+  edge  [fontname="Fira Sans", fontsize=8.5, color="#5E5566", arrowsize=0.6];
+  D1 [label="Dataset", fillcolor="#EAE1F6", color="#6B4C9A", pos="0,0!"];
+  D2 [label="Dataset", fillcolor="#EAE1F6", color="#6B4C9A", pos="5.2,0!"];
+  R  [label="Resource\n{kind, value}", fillcolor="#F4EFFA", color="#411454", pos="2.6,2.1!"];
+  P1 [label="Part", fillcolor="#F1EEF2", color="#5E5566", pos="-1.9,1.7!"];
+  P2 [label="Part", fillcolor="#F1EEF2", color="#5E5566", pos="-2.1,-1.4!"];
+  W  [label="Sweep", fillcolor="#FDE7E8", color="#E20613", pos="7.2,-1.8!"];
+  D1 -> P1 [label="HAS_PART"];
+  D1 -> P2 [label="HAS_PART"];
+  D1 -> R  [label="USES {parameter}"];
+  D2 -> R  [label="USES"];
+  D1 -> D2 [label="SIMILAR_PARAMS {score}\n\n"];
+  D2 -> D1 [label="\n\nSIMILAR_FIELDS {field, score}", style=dashed];
+  D2 -> W  [label="BELONGS_TO"];
+}

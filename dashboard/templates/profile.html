@@ -1,0 +1,215 @@
+{#
+SPDX-FileCopyrightText: 2026 Institutt for Energiteknikk (IFE)
+
+SPDX-License-Identifier: Apache-2.0
+#}
+
+{% extends "base.html" %}
+{% block title %}{% if force %}Set New Password{% else %}My Profile{% endif %}{% endblock %}
+
+{% block extra_head %}
+<style>
+/* intercept navigation when force mode is active */
+{% if force %}
+.dh-nav-links, .dh-user-pill { pointer-events: none; opacity: .4; }
+{% endif %}
+
+.strength-bar-bg { height: 4px; border-radius: 99px; background: var(--surface-3); margin-top: .5rem; }
+.strength-bar    { height: 100%; border-radius: 99px; width: 0; transition: width .3s, background .3s; }
+
+.profile-avatar {
+  width: 56px; height: 56px; border-radius: 14px;
+  background: linear-gradient(135deg, var(--accent), var(--brand));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6 col-lg-5">
+
+    {% if force %}
+    <!-- ── Force-change banner ──────────────────────────────────── -->
+    <div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);border-radius:var(--r-lg);padding:1rem 1.1rem;margin-bottom:1.5rem;display:flex;align-items:flex-start;gap:.75rem">
+      <i class="bi bi-shield-exclamation" style="color:var(--amber);font-size:1.3rem;flex-shrink:0;margin-top:.1rem"></i>
+      <div>
+        <div style="font-weight:600;color:var(--amber);margin-bottom:.2rem">Password change required</div>
+        <div style="font-size:.82rem;color:var(--text-2);line-height:1.5">
+          Your account was created with a temporary password.<br>
+          Please set a new password before you can continue.
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ── Profile header ─────────────────────────────────────────── -->
+    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem">
+      <div class="profile-avatar">{{ current_user.username[0].upper() }}</div>
+      <div>
+        <div style="font-size:1.1rem;font-weight:700;color:var(--text);letter-spacing:-.02em">{{ current_user.username }}</div>
+        <div style="display:flex;align-items:center;gap:.5rem;margin-top:.25rem">
+          <span class="role-badge role-{{ current_user.role }}">{{ current_user.role }}</span>
+          {% if current_user.email %}
+          <span style="font-size:.78rem;color:var(--text-3)">{{ current_user.email }}</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Alerts -->
+    {% if msg %}
+    <div class="alert alert-success d-flex align-items-center gap-2 py-2 mb-3">
+      <i class="bi bi-check-circle-fill"></i>{{ msg }}
+    </div>
+    {% endif %}
+    {% if error %}
+    <div class="alert alert-danger d-flex align-items-center gap-2 py-2 mb-3">
+      <i class="bi bi-exclamation-circle-fill"></i>{{ error }}
+    </div>
+    {% endif %}
+
+    <!-- ── Change password card ────────────────────────────────────── -->
+    <div class="card">
+      <div class="card-header">
+        {% if force %}Set your new password{% else %}Change Password{% endif %}
+      </div>
+      <div class="card-body" style="padding:1.25rem">
+        <form method="post" action="/profile/password" autocomplete="off">
+          <input type="hidden" name="force" value="{{ 1 if force else 0 }}">
+
+          <div class="mb-3">
+            <label class="form-label">
+              {% if force %}Temporary password{% else %}Current password{% endif %}
+              <span style="color:var(--red)">*</span>
+            </label>
+            <div style="display:flex;border:1px solid var(--border-2);border-radius:var(--r-sm);overflow:hidden;transition:border-color .15s,box-shadow .15s" class="pw-row">
+              <input name="current_password" type="password" required
+                     class="form-control" style="border:none;flex:1;background:transparent"
+                     placeholder="{% if force %}Enter your temporary password{% else %}Enter current password{% endif %}"
+                     autocomplete="current-password">
+              <button type="button" class="btn btn-ghost btn-sm" style="border:none;border-left:1px solid var(--border)" onclick="toggleVis('curPwd', this)">
+                <i class="bi bi-eye" id="curPwdIcon"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">New password <span style="color:var(--red)">*</span></label>
+            <div style="display:flex;border:1px solid var(--border-2);border-radius:var(--r-sm);overflow:hidden;transition:border-color .15s,box-shadow .15s" class="pw-row">
+              <input id="newPwd" name="new_password" type="password" required minlength="{{ MIN_PASSWORD_LEN }}"
+                     class="form-control" style="border:none;flex:1;background:transparent"
+                     placeholder="Minimum {{ MIN_PASSWORD_LEN }} characters"
+                     autocomplete="new-password"
+                     oninput="checkStrength(this.value); checkMatch()">
+              <button type="button" class="btn btn-ghost btn-sm" style="border:none;border-left:1px solid var(--border)" onclick="toggleVis('newPwd', this)">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+            <!-- Strength meter -->
+            <div class="strength-bar-bg">
+              <div id="strengthBar" class="strength-bar"></div>
+            </div>
+            <div id="strengthLabel" style="font-size:.72rem;color:var(--text-3);margin-top:.3rem"></div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label">Confirm new password <span style="color:var(--red)">*</span></label>
+            <div style="display:flex;border:1px solid var(--border-2);border-radius:var(--r-sm);overflow:hidden" class="pw-row">
+              <input id="confirmPwd" name="confirm_password" type="password" required minlength="{{ MIN_PASSWORD_LEN }}"
+                     class="form-control" style="border:none;flex:1;background:transparent"
+                     placeholder="Repeat new password"
+                     autocomplete="new-password"
+                     oninput="checkMatch()">
+              <button type="button" class="btn btn-ghost btn-sm" style="border:none;border-left:1px solid var(--border)" onclick="toggleVis('confirmPwd', this)">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+            <div id="matchLabel" style="font-size:.72rem;margin-top:.3rem"></div>
+          </div>
+
+          <button type="submit" id="submitBtn" class="btn btn-brand btn-md w-100">
+            <i class="bi bi-shield-check me-1"></i>
+            {% if force %}Set New Password & Continue{% else %}Update Password{% endif %}
+          </button>
+        </form>
+      </div>
+    </div>
+
+    {% if not force %}
+    <div style="text-align:center;margin-top:1rem">
+      <a href="/" style="font-size:.8rem;color:var(--text-3)">
+        <i class="bi bi-arrow-left me-1"></i>Back to Simulations
+      </a>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Focus the right field on load
+{% if force %}
+document.querySelector('[name="current_password"]').focus();
+{% endif %}
+
+// ── Prevent navigation away when force mode is active ───────────
+{% if force %}
+window.addEventListener('beforeunload', function(e) {
+  e.preventDefault();
+  e.returnValue = 'You must change your password before continuing.';
+});
+// Allow form submit to proceed without the beforeunload warning
+document.querySelector('form').addEventListener('submit', function() {
+  window.onbeforeunload = null;
+});
+{% endif %}
+
+function toggleVis(fieldId, btn) {
+  const f = document.getElementById(fieldId) || btn.closest('.pw-row').querySelector('input');
+  const icon = btn.querySelector('i');
+  f.type = f.type === 'password' ? 'text' : 'password';
+  icon.className = f.type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+}
+
+function checkStrength(val) {
+  const bar   = document.getElementById('strengthBar');
+  const label = document.getElementById('strengthLabel');
+  if (!val) { bar.style.width = '0'; label.textContent = ''; return; }
+  let score = 0;
+  if (val.length >= 8)  score++;
+  if (val.length >= 12) score++;
+  if (/[A-Z]/.test(val)) score++;
+  if (/[0-9]/.test(val)) score++;
+  if (/[^A-Za-z0-9]/.test(val)) score++;
+  const levels = [
+    { pct:'20%', color:'#f87171', text:'Very weak' },
+    { pct:'40%', color:'#fb923c', text:'Weak' },
+    { pct:'60%', color:'#fbbf24', text:'Fair' },
+    { pct:'80%', color:'#4ade80', text:'Strong' },
+    { pct:'100%',color:'var(--brand)', text:'Very strong ✓' },
+  ];
+  const l = levels[Math.max(0, score - 1)];
+  bar.style.width = l.pct; bar.style.background = l.color;
+  label.textContent = l.text; label.style.color = l.color;
+}
+
+function checkMatch() {
+  const a = document.getElementById('newPwd').value;
+  const b = document.getElementById('confirmPwd').value;
+  const lbl = document.getElementById('matchLabel');
+  const btn = document.getElementById('submitBtn');
+  if (!b) { lbl.textContent = ''; btn.disabled = false; return; }
+  if (a === b) {
+    lbl.innerHTML = '<span style="color:var(--green)">✓ Passwords match</span>';
+    btn.disabled = false;
+  } else {
+    lbl.innerHTML = '<span style="color:var(--red)">✗ Passwords do not match</span>';
+    btn.disabled = true;
+  }
+}
+</script>
+{% endblock %}

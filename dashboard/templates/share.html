@@ -1,0 +1,56 @@
+{#
+SPDX-FileCopyrightText: 2026 Institutt for Energiteknikk (IFE)
+
+SPDX-License-Identifier: Apache-2.0
+#}
+
+{% extends "base.html" %}
+{% block title %}{{ ds.name if ds else 'Shared dataset' }}{% endblock %}
+{% block extra_head %}
+<style>
+.kv td{padding:.3rem .6rem;border-bottom:1px solid var(--border);font-size:.8rem;vertical-align:top;color:var(--text)}
+.kv td:first-child{color:var(--text-3);white-space:nowrap;width:40%}
+.cls{font-size:.65rem;padding:.1rem .4rem;border-radius:4px;background:var(--surface-3);color:var(--text-2);font-family:var(--mono)}
+.small-table td,.small-table th{padding:.3rem .6rem;font-size:.78rem;color:var(--text)}
+.part-head{padding:.6rem 1rem;background:var(--surface-2);border-top:1px solid var(--border);font-weight:600;color:var(--text)}
+</style>
+{% endblock %}
+{% block content %}
+{% if error %}
+  <div class="card mt-4" style="max-width:560px"><div class="card-body" style="color:var(--text)">
+    <h1 class="page-title"><i class="bi bi-link-45deg"></i> Shared dataset</h1>
+    <p class="mb-0">{{ error }}. Ask the person who sent it for a new link.</p></div></div>
+{% else %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+  <div>
+    <div class="text-muted small"><i class="bi bi-link-45deg"></i> Shared with you by {{ link.created_by }} · link expires {{ link.expires_at|localdt }}{% if link.max_downloads %} · {{ link.max_downloads - link.download_count }} of {{ link.max_downloads }} downloads left{% endif %}</div>
+    <h1 class="page-title mono" style="font-size:1.15rem">{{ ds.name }}</h1>
+    <span class="cls">{{ dtype.label if dtype else ds.dataset_type }}</span>
+  </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-ghost btn-sm" href="/s/{{ token }}/meta" target="_blank" rel="noreferrer"><i class="bi bi-filetype-json"></i>Metadata</a>
+    <a class="btn btn-brand btn-sm" href="/s/{{ token }}/archive.zip" rel="noreferrer"><i class="bi bi-file-zip"></i>Download all</a>
+  </div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-4 d-flex flex-column gap-3">
+    <div class="card"><div class="card-header">Parameters</div><div class="card-body p-0"><table class="kv w-100">
+      {% for k, v in ds.parameters.items() %}<tr><td>{{ plabels[k].label if k in plabels else k }}</td><td class="mono">{{ fmt_value(v) }}</td></tr>
+      {% else %}<tr><td class="text-muted">None</td></tr>{% endfor %}</table></div></div>
+    <div class="card"><div class="card-header">Quantities of interest</div><div class="card-body p-0"><table class="kv w-100">
+      {% for q in ds.quantities %}<tr><td>{{ qlabels[q.name].label if q.name in qlabels else q.name }}</td><td class="mono">{{ fmt_value(q.value) }} {{ q.unit or '' }}</td></tr>
+      {% else %}<tr><td class="text-muted">None</td></tr>{% endfor %}</table></div></div>
+  </div>
+  <div class="col-lg-8"><div class="card"><div class="card-header">Files</div><div class="card-body p-0">
+    {% macro filetable(files) %}
+    <table class="w-100 small-table">{% for f in files %}<tr><td class="mono">{{ f.relpath }}</td><td><span class="cls">{{ class_labels.get(f.file_class, f.file_class) }}</span></td>
+      <td class="mono text-end">{{ human_size(f.size_bytes) }}</td>
+      <td class="text-end"><a class="btn btn-ghost btn-sm" href="/s/{{ token }}/files/{{ f.id }}" rel="noreferrer"><i class="bi bi-download"></i></a></td></tr>{% endfor %}</table>
+    {% endmacro %}
+    {% if ds.files %}{{ filetable(ds.files) }}{% endif %}
+    {% for p in ds.parts %}<div class="part-head">{{ dtype.parts.label if dtype and dtype.parts else 'Part' }} {{ p.label }}</div>{{ filetable(p.files) }}{% endfor %}
+  </div></div></div>
+</div>
+<p class="text-muted small mt-3">Downloads through this link are logged. Each file and each archive counts as one download.</p>
+{% endif %}
+{% endblock %}

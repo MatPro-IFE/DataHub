@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: 2026 Institutt for Energiteknikk (IFE)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# Weekly update proposals for Python packages, container base images and CI actions.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: "/dashboard"
+    schedule: {interval: weekly}
+  - package-ecosystem: pip
+    directory: "/ml-api"
+    schedule: {interval: weekly}
+  - package-ecosystem: docker
+    directory: "/dashboard"
+    schedule: {interval: weekly}
+  - package-ecosystem: docker
+    directory: "/ml-api"
+    schedule: {interval: weekly}
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule: {interval: weekly}

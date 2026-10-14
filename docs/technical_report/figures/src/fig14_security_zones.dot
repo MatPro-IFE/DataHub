@@ -1,0 +1,28 @@
+digraph Z {
+  graph [rankdir=LR, fontname="Fira Sans", fontsize=12, nodesep=0.3, ranksep=0.45, pad=0.2, compound=true, newrank=true];
+  node  [shape=box, style="rounded,filled", fontname="Fira Sans", fontsize=11, color="#411454", fillcolor="#F4EFFA"];
+  edge  [fontname="Fira Sans", fontsize=9.5, color="#5E5566", arrowsize=0.6];
+
+  subgraph cluster_out {
+    label="Untrusted: internet or partner networks"; style="rounded,dashed"; color="#E20613"; fontcolor="#E20613";
+    user  [label="Users\n(browser, client)", fillcolor="white"];
+    link  [label="Link holders\n(no account)", fillcolor="white"];
+    files [label="Uploaded files\n(VTK, HDF5, XDMF,\nExodus, any type)", fillcolor="#FDE7E8", color="#E20613"];
+  }
+  proxy [label="Reverse proxy\nTLS, rate limits", fillcolor="white"];
+  subgraph cluster_host {
+    label="Host: Docker network, ports bound to loopback"; style="rounded"; color="#411454"; fontcolor="#411454";
+    dash [label="Dashboard\nsessions, roles, orgs, groups,\nlinks, CSP, same-origin check\nuid 10001, read-only", fillcolor="#EAE1F6", color="#6B4C9A"];
+    ml   [label="ml-api\nbearer token, file parsers\nuid 10001, read-only,\nno capabilities", fillcolor="#EAE1F6", color="#6B4C9A"];
+    pg   [label="PostgreSQL\nRLS, no anon rights", shape=cylinder, fillcolor="#F1EEF2", color="#5E5566"];
+    s3   [label="Object store\nprivate bucket", shape=cylinder, fillcolor="#F1EEF2", color="#5E5566"];
+    neo  [label="Neo4j", shape=cylinder, fillcolor="#F1EEF2", color="#5E5566"];
+  }
+  admin [label="Administrators\nSSH tunnel", fillcolor="white"];
+
+  user -> proxy [label="HTTPS"]; link -> proxy [label="HTTPS /s/<token>"]; files -> proxy [style=dashed, color="#E20613"];
+  proxy -> dash [label="HTTP"];
+  dash -> ml [label="token"]; dash -> pg; dash -> s3;
+  ml -> pg; ml -> s3; ml -> neo;
+  admin -> pg [style=dashed]; admin -> neo [style=dashed];
+}

@@ -1,0 +1,229 @@
+# SPDX-FileCopyrightText: 2026 Institutt for Energiteknikk (IFE)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: datahub
+# DataHub - self-hosted catalogue for simulation and experimental data
+#
+#   db         PostgreSQL 15 + pgvector (metadata, vectors, users, audit)     internal
+#   db-schema  one-shot schema initialisation
+#   minio      S3-compatible object store (raw files)                         127.0.0.1:19000 / 19001
+#   neo4j      knowledge graph                                                127.0.0.1:7474 / 7687
+#   ml-api     graph, vectors, embeddings, similarity, sweeps                 127.0.0.1:8090
+#   dashboard  web UI and session API                                         ${DASHBOARD_BIND}:8080
+# Optional administration tools (docker compose --profile admin up -d):
+#   rest       PostgREST, service-role only                                   127.0.0.1:8001
+#   meta, studio  Supabase Studio database browser                           127.0.0.1:3001
+#
+# The project schema is mounted read-only from ../config/schema.yaml.
+
+x-logging: &default-logging
+  driver: "json-file"
+  options: {max-size: "10m", max-file: "3"}
+
+# Application containers run as an unprivileged user on a read-only root file system,
+# without Linux capabilities and without privilege escalation. They parse untrusted
+# files (VTK, HDF5, netCDF), so a parser flaw should not give more than this.
+x-hardening: &hardening
+  user: "10001:10001"
+  read_only: true
+  tmpfs: ["/tmp"]
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: ["ALL"]
+
+x-db-env: &db-env
+  POSTGRES_HOST: db
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: postgres
+  POSTGRES_USER: postgres
+  POSTGRES_USER_DB: postgres
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+
+x-s3-env: &s3-env
+  MINIO_ENDPOINT: minio:9000
+  MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-datahub-admin}
+  MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
+  MINIO_BUCKET: ${MINIO_BUCKET:-datahub-data}
+  MINIO_SECURE: "false"
+
+networks:
+  datahub:
+    driver: bridge
+
+services:
+
+  db:
+    image: supabase/postgres:15.1.0.147
+    restart: unless-stopped
+    logging: *default-logging
+    networks: [datahub]
+    volumes:
+      - ${DATA_DIR:-./data}/postgres:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  db-schema:
+    image: postgres:15-alpine
+    restart: on-failure
+    networks: [datahub]
+    depends_on:
+      db: {condition: service_healthy}
+    volumes:
+      - ./postgres/init.sql:/init.sql:ro
+      - ./postgres/apply-schema.sh:/apply-schema.sh:ro
+      - ./postgres/migrations:/migrations:ro
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    entrypoint: ["/bin/sh", "/apply-schema.sh"]
+
+  # The upstream minio/minio and minio/mc images were withdrawn from Docker Hub
+  # and quay.io in September 2026. The default is the Chainguard build of MinIO;
+  # any S3-compatible server can be used (MINIO_IMAGE), see docs/DEPLOYMENT.md.
+  minio:
+    image: ${MINIO_IMAGE:-cgr.dev/chainguard/minio:latest}
+    restart: unless-stopped
+    logging: *default-logging
+    networks: [datahub]
+    volumes:
+      - ${DATA_DIR:-./data}/minio:/data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-datahub-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
+    command: ["server", "/data", "--console-address", ":9001"]
+    healthcheck:
+      # bash built-ins only, so it works on minimal images without curl
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /minio/health/live HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && read -r l <&3 && [[ $$l == *200* ]]"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "${MINIO_BIND:-127.0.0.1}:19000:9000"
+      - "127.0.0.1:19001:9001"
+
+  neo4j:
+    image: neo4j:5-community
+    restart: unless-stopped
+    logging: *default-logging
+    networks: [datahub]
+    volumes:
+      - ${DATA_DIR:-./data}/neo4j:/data
+    environment:
+      NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD:?set NEO4J_PASSWORD in .env}"
+      NEO4J_server_memory_heap_initial__size: "256m"
+      NEO4J_server_memory_heap_max__size: "${NEO4J_HEAP:-1g}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+    ports:
+      - "127.0.0.1:7474:7474"
+      - "127.0.0.1:7687:7687"
+
+  ml-api:
+    build: {context: .., dockerfile: ml-api/Dockerfile}
+    restart: unless-stopped
+    logging: *default-logging
+    networks: [datahub]
+    depends_on:
+      db-schema: {condition: service_completed_successfully}
+      minio: {condition: service_healthy}
+      neo4j: {condition: service_healthy}
+    environment:
+      <<: [*db-env, *s3-env]
+      DATAHUB_SCHEMA: /app/config/schema.yaml
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+      ML_API_TOKEN: ${ML_API_TOKEN:?set ML_API_TOKEN in .env}
+    volumes:
+      - ../config/schema.yaml:/app/config/schema.yaml:ro
+    <<: *hardening
+    ports:
+      - "127.0.0.1:8090:8090"
+
+  dashboard:
+    build: {context: .., dockerfile: dashboard/Dockerfile}
+    restart: unless-stopped
+    logging: *default-logging
+    networks: [datahub]
+    depends_on:
+      db-schema: {condition: service_completed_successfully}
+      minio: {condition: service_healthy}
+    environment:
+      <<: [*db-env, *s3-env]
+      DATAHUB_SCHEMA: /app/config/schema.yaml
+      ML_API_URL: http://ml-api:8090
+      ML_API_TOKEN: ${ML_API_TOKEN:?set ML_API_TOKEN in .env}
+      DATAHUB_COOKIE_SECURE: ${DATAHUB_COOKIE_SECURE:-false}
+      DATAHUB_MAX_UPLOAD_GB: ${DATAHUB_MAX_UPLOAD_GB:-200}
+      DATAHUB_MIN_PASSWORD_LENGTH: ${DATAHUB_MIN_PASSWORD_LENGTH:-12}
+      DASHBOARD_SECRET_KEY: ${DASHBOARD_SECRET_KEY:?set DASHBOARD_SECRET_KEY in .env}
+      DATAHUB_ADMIN_PASSWORD: ${DATAHUB_ADMIN_PASSWORD:?set DATAHUB_ADMIN_PASSWORD in .env}
+      DATAHUB_ORGANIZATIONS: ${DATAHUB_ORGANIZATIONS:-}
+      DATAHUB_ORG_EMAIL_DOMAINS: ${DATAHUB_ORG_EMAIL_DOMAINS:-}
+      DATAHUB_ORG_HIDDEN_FILE_CLASSES: ${DATAHUB_ORG_HIDDEN_FILE_CLASSES:-}
+      DATAHUB_SITE_NAME: ${DATAHUB_SITE_NAME:-}
+      DATAHUB_SHARE_MAX_DAYS: ${DATAHUB_SHARE_MAX_DAYS:-30}
+      DATAHUB_PUBLIC_URL: ${DATAHUB_PUBLIC_URL:-}
+      DATAHUB_UPLOAD_DIR: /staging
+      TMPDIR: /staging
+      DASHBOARD_TZ: ${DASHBOARD_TZ:-UTC}
+    volumes:
+      - ../config/schema.yaml:/app/config/schema.yaml:ro
+      - ${DATA_DIR:-./data}/staging:/staging
+      # optional read-only folder for server-side bulk ingestion (python -m dashboard.ingest)
+      - ${INGEST_FOLDER:-./data/ingest}:/ingest:ro
+    <<: *hardening
+    ports:
+      - "${DASHBOARD_BIND:-127.0.0.1}:8080:8080"
+
+  # ── optional administration tools ─────────────────────────────
+  rest:
+    image: postgrest/postgrest:v12.2.0
+    profiles: [admin]
+    restart: unless-stopped
+    networks: [datahub]
+    depends_on:
+      db: {condition: service_healthy}
+    environment:
+      PGRST_DB_URI: "host=db port=5432 dbname=postgres user=postgres password=${POSTGRES_PASSWORD}"
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${PGRST_JWT_SECRET:-}
+    ports:
+      - "127.0.0.1:8001:3000"
+
+  meta:
+    image: supabase/postgres-meta:v0.83.0
+    profiles: [admin]
+    restart: unless-stopped
+    networks: [datahub]
+    depends_on:
+      db: {condition: service_healthy}
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: db
+      PG_META_DB_PORT: 5432
+      PG_META_DB_NAME: postgres
+      PG_META_DB_USER: supabase_admin
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
+
+  studio:
+    image: ${STUDIO_IMAGE:-supabase/studio:latest}
+    profiles: [admin]
+    restart: unless-stopped
+    networks: [datahub]
+    depends_on: [meta]
+    environment:
+      STUDIO_PG_META_URL: http://meta:8080
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DEFAULT_ORGANIZATION_NAME: DataHub
+      DEFAULT_PROJECT_NAME: DataHub
+    ports:
+      - "127.0.0.1:3001:3000"

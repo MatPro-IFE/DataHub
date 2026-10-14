@@ -1,0 +1,47 @@
+cff-version: 1.2.0
+message: "If you use DataHub, please cite it as below."
+title: "DataHub: a self-hosted, schema-driven catalogue for simulation and experimental data with knowledge graph and parameter-sweep design"
+version: 1.0.0
+date-released: 2026-10-13
+license: Apache-2.0
+type: software
+repository-code: "https://github.com/MatPro-IFE/DataHub"
+authors:
+  - family-names: Adhikari
+    orcid: "https://orcid.org/0000-0002-9316-3292"
+    given-names: Sayan
+    affiliation: "Institute for Energy Technology (IFE), Kjeller, Norway"
+  - family-names: Noorsumar
+    orcid: "https://orcid.org/0000-0002-6718-4508"
+    given-names: Gulshan
+    affiliation: "Institute for Energy Technology (IFE), Kjeller, Norway"
+  - family-names: Jensen
+    orcid: "https://orcid.org/0000-0003-4353-9359"
+    given-names: Øyvind
+    affiliation: "Institute for Energy Technology (IFE), Kjeller, Norway"
+keywords:
+  - research data management
+  - FAIR data
+  - simulation data
+  - knowledge graph
+  - digital twin
+  - design of experiments
+preferred-citation:
+  type: report
+  title: "DataHub: a self-hosted, schema-driven catalogue for simulation and experimental data with knowledge graph and parameter-sweep design"
+  institution:
+    name: "Institute for Energy Technology (IFE)"
+  year: 2026
+  month: 10
+  doi: "10.5281/zenodo.23378345"
+  url: "https://doi.org/10.5281/zenodo.23378345"
+  authors:
+    - family-names: Adhikari
+      given-names: Sayan
+      orcid: "https://orcid.org/0000-0002-9316-3292"
+    - family-names: Noorsumar
+      given-names: Gulshan
+      orcid: "https://orcid.org/0000-0002-6718-4508"
+    - family-names: Jensen
+      given-names: Øyvind
+      orcid: "https://orcid.org/0000-0003-4353-9359"
