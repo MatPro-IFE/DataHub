@@ -1,0 +1,42 @@
+{#
+SPDX-FileCopyrightText: 2026 Institutt for Energiteknikk (IFE)
+
+SPDX-License-Identifier: Apache-2.0
+#}
+
+{% extends "base.html" %}
+{% block title %}Schema{% endblock %}
+{% block extra_head %}
+<style>.small-table td,.small-table th{padding:.35rem .6rem;font-size:.78rem;vertical-align:top}
+.cls{font-size:.65rem;padding:.1rem .4rem;border-radius:4px;background:var(--surface-3);color:var(--text-2);font-family:var(--mono)}
+pre.yaml{background:var(--surface-2);border-radius:var(--r);padding:1rem;font-size:.74rem;color:var(--text-2);max-height:520px;overflow:auto}</style>
+{% endblock %}
+{% block content %}
+<h1 class="page-title">Project schema</h1>
+<p class="page-subtitle">{{ SCHEMA.instance_name }}{% if SCHEMA.description %} · {{ SCHEMA.description }}{% endif %} · version <span class="mono">{{ SCHEMA.hash }}</span></p>
+<p class="small text-muted mb-4">The schema defines what this DataHub instance stores. Administrators edit <span class="mono">config/schema.yaml</span>
+and restart the dashboard and ml-api; derived data are rebuilt with <span class="mono">POST /process/all</span> on the ml-api.</p>
+<div class="row g-3">
+  <div class="col-lg-6"><div class="card"><div class="card-header">Dataset types</div><div class="card-body p-0">
+    <table class="dh-table w-100 small-table"><thead><tr><th>Id</th><th>Label</th><th>Parts</th></tr></thead><tbody>
+    {% for t in SCHEMA.dataset_types %}<tr><td class="mono">{{ t.id }}</td><td>{{ t.label }}</td>
+      <td>{% if t.parts %}{{ t.parts.label }} <span class="cls">{{ t.parts.folder_pattern }}</span>{% else %}-{% endif %}</td></tr>{% endfor %}
+    </tbody></table></div></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-header">Parameters</div><div class="card-body p-0">
+    <table class="dh-table w-100 small-table"><thead><tr><th>Name</th><th>Type</th><th>Unit</th><th>Range / values</th><th>Vector</th></tr></thead><tbody>
+    {% for p in SCHEMA.parameters %}<tr><td class="mono">{{ p.name }}</td><td>{{ p.type }}</td><td>{{ p.unit }}</td>
+      <td class="mono">{% if p.range %}{{ p.range[0] }} to {{ p.range[1] }}{% elif p.values %}{{ p.values|join(', ') }}{% endif %}</td>
+      <td>{{ 'yes' if p.in_vector and p.type != 'text' else 'no' }}</td></tr>{% endfor %}
+    </tbody></table></div></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-header">File classes</div><div class="card-body p-0">
+    <table class="dh-table w-100 small-table"><thead><tr><th>Id</th><th>Label</th><th>Patterns</th></tr></thead><tbody>
+    {% for c in SCHEMA.file_classes %}<tr><td class="mono">{{ c.id }}</td><td>{{ c.label }}</td><td class="mono">{{ c.patterns|join('  ') }}</td></tr>{% endfor %}
+    <tr><td class="mono">other</td><td>Other</td><td class="text-muted">everything else</td></tr>
+    </tbody></table></div></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-header">Quantities of interest</div><div class="card-body p-0">
+    <table class="dh-table w-100 small-table"><thead><tr><th>Name</th><th>Unit</th><th>Source</th></tr></thead><tbody>
+    {% for q in SCHEMA.quantities %}<tr><td class="mono">{{ q.name }}</td><td>{{ q.unit }}</td><td class="mono">{{ q.source|tojson }}</td></tr>{% endfor %}
+    </tbody></table></div></div></div>
+  <div class="col-12"><div class="card"><div class="card-header">schema.yaml</div><div class="card-body"><pre class="yaml">{{ schema_text }}</pre></div></div></div>
+</div>
+{% endblock %}

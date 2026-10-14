@@ -1,0 +1,89 @@
+% ---------------------------------------------------------------
+% IFE brand styling for the DataHub technical report
+% @BRAND@ is replaced by build.sh with the absolute path of ../brand/
+% ---------------------------------------------------------------
+\usepackage{fontspec}
+\setmainfont{FiraSans}[
+  Path=@BRAND@fonts/, Extension=.ttf,
+  UprightFont=*-Regular, ItalicFont=*-Italic,
+  BoldFont=*-SemiBold, BoldItalicFont=*-BoldItalic]
+\setsansfont{FiraSans}[
+  Path=@BRAND@fonts/, Extension=.ttf,
+  UprightFont=*-Regular, ItalicFont=*-Italic,
+  BoldFont=*-SemiBold, BoldItalicFont=*-BoldItalic]
+\newfontfamily\firalight{FiraSans}[Path=@BRAND@fonts/, Extension=.ttf, UprightFont=*-Light, ItalicFont=*-LightItalic, BoldFont=*-Medium]
+\newfontfamily\firabold{FiraSans}[Path=@BRAND@fonts/, Extension=.ttf, UprightFont=*-Bold]
+\newfontfamily\firamedium{FiraSans}[Path=@BRAND@fonts/, Extension=.ttf, UprightFont=*-Medium]
+\linespread{1.12}
+
+% IFE colours
+\definecolor{ifepurple}{HTML}{411454}
+\definecolor{ifered}{HTML}{E20613}
+\definecolor{ifeink}{HTML}{1D1D1B}
+\definecolor{ifegrey}{HTML}{5E5566}
+\definecolor{ifetint}{HTML}{F4EFFA}
+\definecolor{ifetint2}{HTML}{EAE1F6}
+\definecolor{ifelilac}{HTML}{8667B3}
+\color{ifeink}
+% names used by the pandoc link options
+\colorlet{dhnavy}{ifepurple}
+\colorlet{dhteal}{ifered}
+\colorlet{dhgrey}{ifegrey}
+
+% Headings: red number, purple title
+\usepackage{titlesec}
+\titleformat{\section}{\firabold\LARGE\color{ifepurple}}{\color{ifered}\thesection}{0.6em}{}
+\titleformat{\subsection}{\firamedium\large\color{ifepurple}}{\color{ifered}\thesubsection}{0.6em}{}
+\titleformat{\subsubsection}{\firamedium\normalsize\color{ifepurple}}{\color{ifered}\thesubsubsection}{0.6em}{}
+\titlespacing*{\section}{0pt}{3.0ex plus 1ex}{1.4ex}
+\titlespacing*{\subsection}{0pt}{2.2ex plus 0.8ex}{0.9ex}
+\newcommand{\sectionbreak}{\addpenalty{-300}}
+
+% Header and footer with IFE logo
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\raisebox{-0.25\height}{\includegraphics[height=6.5mm]{@BRAND@logo/ife-logo-dark.pdf}}}
+\fancyhead[R]{\firalight\footnotesize\color{ifegrey}DataHub \,\textbar\, Technical report v1.0}
+\fancyfoot[L]{\firalight\footnotesize\color{ifegrey}Adhikari, Noorsumar and Jensen \,\textbar\, IFE}
+\fancyfoot[R]{\firamedium\footnotesize\color{ifepurple}\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+\setlength{\headheight}{22pt}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[R]{\firamedium\footnotesize\color{ifepurple}\thepage}}
+
+% Captions: red label, grey text
+\usepackage[font={small,color=ifegrey},labelfont={bf,color=ifered},labelsep=period,skip=6pt,justification=raggedright,singlelinecheck=false]{caption}
+
+% Tables: purple rules and light purple stripes
+\usepackage{booktabs}
+\renewcommand{\arraystretch}{1.25}
+\arrayrulecolor{ifepurple}
+\AtBeginEnvironment{longtable}{\small\rowcolors{2}{white}{ifetint}}
+\setlength{\aboverulesep}{0pt}\setlength{\belowrulesep}{0pt}
+
+% Lists: red bullets
+\renewcommand{\labelitemi}{\textcolor{ifered}{\small$\blacksquare$}}
+\renewcommand{\labelitemii}{\textcolor{ifelilac}{\textendash}}
+
+% Code blocks on a purple tint
+\usepackage{etoolbox}
+\usepackage{fvextra}
+\RecustomVerbatimEnvironment{verbatim}{Verbatim}{fontsize=\small,formatcom=\color{ifepurple}}
+\usepackage{mdframed}
+\BeforeBeginEnvironment{verbatim}{\begin{mdframed}[backgroundcolor=ifetint,topline=false,bottomline=false,rightline=false,leftline=true,linecolor=ifered,linewidth=2pt,innertopmargin=4pt,innerbottommargin=4pt]}
+\AfterEndEnvironment{verbatim}{\end{mdframed}}
+
+\setlength{\parskip}{0.5em}
+\setlength{\parindent}{0pt}
+\usepackage{float}
+\floatplacement{figure}{htp}
+\renewcommand{\topfraction}{0.85}\renewcommand{\bottomfraction}{0.6}\renewcommand{\textfraction}{0.1}\renewcommand{\floatpagefraction}{0.75}
+% Longtables and pending floats can overflow a page; flush floats before tables and sections
+\usepackage{placeins}
+\AtBeginEnvironment{longtable}{\FloatBarrier}
+\usepackage{microtype}
+\usepackage{amssymb}
+\usepackage{tikz}
+\usepackage{eso-pic}
+\usepackage{orcidlink}

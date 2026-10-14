@@ -1,0 +1,629 @@
+{#
+SPDX-FileCopyrightText: 2026 Institutt for Energiteknikk (IFE)
+
+SPDX-License-Identifier: Apache-2.0
+#}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}DataHub{% endblock %} · {{ SITE_NAME }}</title>
+
+  <!-- Inter + JetBrains Mono -->
+  <link href="/static/vendor/fonts/fonts.css" rel="stylesheet">
+
+  <!-- Bootstrap grid/utilities only (we override all visual styling) -->
+  <link rel="stylesheet" href="/static/vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="/static/vendor/bootstrap-icons/bootstrap-icons.min.css">
+
+  <style>
+  /* ── Design tokens ─────────────────────────────────────────────── */
+  :root {
+    --bg:          #070c18;
+    --bg-2:        #0c1428;
+    --surface:     #0f1a2e;
+    --surface-2:   #142038;
+    --surface-3:   #1a2944;
+
+    --border:      rgba(255,255,255,0.07);
+    --border-2:    rgba(255,255,255,0.13);
+
+    --brand:       #00e5c9;
+    --brand-dim:   #00c4ab;
+    --brand-glow:  rgba(0,229,201,0.15);
+
+    --accent:      #818cf8;
+    --accent-dim:  #6366f1;
+
+    --text:        #e2eaf8;
+    --text-2:      #8fa8c8;
+    --text-3:      #556880;
+
+    --green:       #10b981;
+    --blue:        #3b82f6;
+    --red:         #f87171;
+    --amber:       #fbbf24;
+
+    --r-sm:  6px;
+    --r:    10px;
+    --r-lg: 14px;
+    --r-xl: 20px;
+
+    --shadow:    0 4px 20px rgba(0,0,0,0.5);
+    --shadow-lg: 0 8px 40px rgba(0,0,0,0.65);
+
+    --font: 'Inter', system-ui, -apple-system, sans-serif;
+    --mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+    --nav-h: 56px;
+  }
+
+  /* ── Base ──────────────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font);
+    font-size: .875rem;
+    line-height: 1.6;
+    color: var(--text);
+    background: var(--bg);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* subtle mesh background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 15% 20%, rgba(99,102,241,.07) 0%, transparent 55%),
+      radial-gradient(ellipse 60% 50% at 85% 75%, rgba(0,229,201,.06) 0%, transparent 55%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Scrollbar ──────────────────────────────────────────────────  */
+  ::-webkit-scrollbar         { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track   { background: transparent; }
+  ::-webkit-scrollbar-thumb   { background: var(--surface-3); border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+
+  /* ── Navbar ─────────────────────────────────────────────────────  */
+  .dh-nav {
+    position: sticky;
+    top: 0;
+    z-index: 1040;
+    height: var(--nav-h);
+    display: flex;
+    align-items: center;
+    padding: 0 1.25rem;
+    background: rgba(7,12,24,.85);
+    backdrop-filter: blur(16px) saturate(1.4);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    border-bottom: 1px solid var(--border);
+    gap: 1.5rem;
+  }
+
+  .dh-nav-brand {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    text-decoration: none;
+    flex-shrink: 0;
+  }
+  .dh-nav-brand-icon {
+    width: 30px; height: 30px;
+    background: linear-gradient(135deg, var(--brand) 0%, var(--accent) 100%);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .85rem; color: #fff; font-weight: 700;
+    letter-spacing: -.02em;
+    box-shadow: 0 0 12px var(--brand-glow);
+  }
+  .dh-nav-brand-text {
+    font-size: .95rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -.02em;
+  }
+  .dh-nav-brand-text span { color: var(--brand); }
+
+  .dh-nav-links {
+    display: flex;
+    align-items: center;
+    gap: .15rem;
+    flex: 1;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .dh-nav-links::-webkit-scrollbar { display: none; }
+
+  .dh-nav-link {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .35rem .7rem;
+    border-radius: var(--r-sm);
+    font-size: .82rem;
+    font-weight: 500;
+    color: var(--text-2);
+    text-decoration: none;
+    transition: color .15s, background .15s;
+    white-space: nowrap;
+    border: 1px solid transparent;
+  }
+  .dh-nav-link:hover {
+    color: var(--text);
+    background: var(--surface-2);
+    border-color: var(--border);
+  }
+  .dh-nav-link.active {
+    color: var(--brand);
+    background: rgba(0,229,201,.08);
+    border-color: rgba(0,229,201,.2);
+  }
+  .dh-nav-link .bi { font-size: .8rem; }
+
+  .dh-nav-sep {
+    width: 1px;
+    height: 18px;
+    background: var(--border-2);
+    flex-shrink: 0;
+  }
+
+  /* User pill */
+  .dh-user-pill {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .3rem .65rem;
+    border-radius: var(--r-lg);
+    border: 1px solid var(--border-2);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    text-decoration: none;
+    transition: background .15s, border-color .15s;
+    font-size: .8rem;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+  .dh-user-pill:hover { background: var(--surface-2); border-color: var(--border-2); color: var(--text); }
+
+  .dh-avatar {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--brand));
+    display: flex; align-items: center; justify-content: center;
+    font-size: .65rem; font-weight: 700; color: #fff;
+    flex-shrink: 0;
+  }
+
+  /* Dropdown */
+  .dh-dropdown-menu {
+    background: var(--surface-2);
+    border: 1px solid var(--border-2);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-lg);
+    padding: .35rem;
+    min-width: 180px;
+  }
+  .dh-dropdown-item {
+    display: flex; align-items: center; gap: .5rem;
+    padding: .5rem .75rem;
+    border-radius: var(--r-sm);
+    color: var(--text-2);
+    font-size: .82rem;
+    text-decoration: none;
+    transition: background .1s, color .1s;
+  }
+  .dh-dropdown-item:hover { background: var(--surface-3); color: var(--text); }
+  .dh-dropdown-item.danger { color: var(--red); }
+  .dh-dropdown-item.danger:hover { background: rgba(248,113,113,.1); color: var(--red); }
+  .dh-dropdown-divider { border: none; border-top: 1px solid var(--border); margin: .3rem 0; }
+
+  /* ── Main layout ────────────────────────────────────────────────  */
+  .dh-main {
+    position: relative;
+    z-index: 1;
+    padding: 1.75rem 1.5rem;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+
+  /* ── Cards ──────────────────────────────────────────────────────  */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow);
+  }
+  .card-header {
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    color: var(--text-2);
+    font-size: .8rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: .75rem 1rem;
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+  }
+  .card-body { padding: 1rem; }
+  .card-footer {
+    background: var(--surface-2);
+    border-top: 1px solid var(--border);
+    padding: .75rem 1rem;
+    border-radius: 0 0 var(--r-lg) var(--r-lg);
+  }
+
+  /* ── Stat cards ─────────────────────────────────────────────────  */
+  .stat-card {
+    position: relative;
+    overflow: hidden;
+    padding: 1.25rem;
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: -30%; right: -20%;
+    width: 100px; height: 100px;
+    border-radius: 50%;
+    background: var(--stat-color, var(--brand));
+    opacity: .06;
+    filter: blur(20px);
+  }
+  .stat-num {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -.04em;
+    color: var(--text);
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: .75rem;
+    font-weight: 500;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin-top: .3rem;
+  }
+  .stat-icon {
+    position: absolute;
+    top: 1rem; right: 1rem;
+    font-size: 1.25rem;
+    opacity: .4;
+  }
+
+  /* ── Tables ─────────────────────────────────────────────────────  */
+  .dh-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    color: var(--text);
+  }
+  .dh-table th {
+    background: var(--surface-2);
+    padding: .55rem 1rem;
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .dh-table td {
+    padding: .7rem 1rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+    font-size: .84rem;
+  }
+  .dh-table tbody tr { transition: background .12s; }
+  .dh-table tbody tr:hover { background: var(--surface-2); }
+  .dh-table tbody tr:last-child td { border-bottom: none; }
+
+  /* ── Badges / status ────────────────────────────────────────────  */
+  .badge-status {
+    display: inline-flex; align-items: center; gap: .35rem;
+    padding: .25rem .65rem;
+    border-radius: 99px;
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .02em;
+  }
+  .badge-status::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .badge-completed { background: rgba(16,185,129,.12); color: #10b981; border: 1px solid rgba(16,185,129,.25); }
+  .badge-completed::before { background: #10b981; }
+  .badge-running   { background: rgba(59,130,246,.12); color: #60a5fa; border: 1px solid rgba(59,130,246,.25); }
+  .badge-running::before { background: #60a5fa; animation: pulse-dot 1.5s ease-in-out infinite; }
+  .badge-failed    { background: rgba(248,113,113,.12); color: #f87171; border: 1px solid rgba(248,113,113,.25); }
+  .badge-failed::before { background: #f87171; }
+  .badge-unknown   { background: rgba(100,116,139,.12); color: #94a3b8; border: 1px solid rgba(100,116,139,.2); }
+  .badge-unknown::before { background: #94a3b8; }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: .4; transform: scale(1.3); }
+  }
+
+  /* role badges */
+  .role-badge {
+    font-size: .68rem; font-weight: 600;
+    padding: .15rem .5rem; border-radius: 4px;
+    letter-spacing: .03em; text-transform: uppercase;
+  }
+  .role-admin    { background: rgba(239,68,68,.15);  color: #f87171; border: 1px solid rgba(239,68,68,.25); }
+  .role-uploader { background: rgba(0,229,201,.12);  color: var(--brand); border: 1px solid rgba(0,229,201,.25); }
+  .role-viewer   { background: rgba(129,140,248,.12); color: var(--accent); border: 1px solid rgba(129,140,248,.25); }
+
+  /* tag pill */
+  .tag-pill {
+    display: inline-flex; align-items: center;
+    padding: .2rem .55rem;
+    border-radius: 99px;
+    background: var(--surface-3);
+    border: 1px solid var(--border-2);
+    font-size: .7rem;
+    font-weight: 500;
+    color: var(--text-2);
+  }
+
+  /* ── Buttons ────────────────────────────────────────────────────  */
+  .btn {
+    font-family: var(--font);
+    font-weight: 500;
+    border-radius: var(--r-sm);
+    transition: all .15s;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: .35rem;
+  }
+  .btn-brand {
+    background: linear-gradient(135deg, var(--brand-dim), var(--brand));
+    border: none;
+    color: #0a1a18;
+    font-weight: 600;
+    box-shadow: 0 2px 12px rgba(0,229,201,.25);
+  }
+  .btn-brand:hover {
+    background: linear-gradient(135deg, var(--brand), #00ffdb);
+    color: #041410;
+    box-shadow: 0 4px 20px rgba(0,229,201,.4);
+    transform: translateY(-1px);
+  }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border-2);
+    color: var(--text-2);
+  }
+  .btn-ghost:hover { background: var(--surface-2); border-color: var(--border-2); color: var(--text); }
+
+  .btn-sm { padding: .3rem .7rem; font-size: .78rem; }
+  .btn-md { padding: .5rem 1rem; font-size: .85rem; }
+  .btn-lg { padding: .7rem 1.4rem; font-size: .95rem; }
+
+  /* ── Form controls ──────────────────────────────────────────────  */
+  .form-control, .form-select {
+    font-family: var(--font);
+    background: var(--surface);
+    border: 1px solid var(--border-2);
+    color: var(--text);
+    border-radius: var(--r-sm);
+    padding: .5rem .8rem;
+    font-size: .84rem;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .form-control:focus, .form-select:focus {
+    background: var(--surface);
+    border-color: var(--brand-dim);
+    color: var(--text);
+    box-shadow: 0 0 0 3px rgba(0,229,201,.15);
+    outline: none;
+  }
+  .form-control::placeholder { color: var(--text-3); }
+  .form-label { color: var(--text-2); font-size: .78rem; font-weight: 500; margin-bottom: .3rem; }
+  .input-group-text {
+    background: var(--surface-2);
+    border: 1px solid var(--border-2);
+    color: var(--text-3);
+    font-size: .84rem;
+    border-radius: var(--r-sm);
+  }
+  .form-select option { background: var(--surface-3); }
+
+  /* ── Accordion (layers panel) ───────────────────────────────────  */
+  .accordion-item { background: transparent; border: none; border-bottom: 1px solid var(--border); }
+  .accordion-item:last-child { border-bottom: none; }
+  .accordion-button {
+    font-family: var(--font); font-size: .85rem; font-weight: 500;
+    background: var(--surface-2); color: var(--text);
+    border: none; box-shadow: none;
+    padding: .8rem 1rem;
+  }
+  .accordion-button:not(.collapsed) { background: var(--surface-2); color: var(--brand); box-shadow: none; }
+  .accordion-button::after { filter: invert(.7); }
+
+  /* ── Pagination ─────────────────────────────────────────────────  */
+  .pagination .page-link {
+    background: var(--surface); border-color: var(--border-2);
+    color: var(--text-2); border-radius: var(--r-sm);
+    margin: 0 .15rem; font-size: .8rem; padding: .35rem .65rem;
+    transition: all .15s;
+  }
+  .pagination .page-link:hover,
+  .pagination .page-item.active .page-link {
+    background: var(--brand-dim); border-color: var(--brand-dim);
+    color: #041410; font-weight: 600;
+  }
+
+  /* ── Alerts ─────────────────────────────────────────────────────  */
+  .alert { border-radius: var(--r-lg); font-size: .84rem; border: 1px solid; }
+  .alert-danger  { background: rgba(248,113,113,.1); border-color: rgba(248,113,113,.3); color: #fca5a5; }
+  .alert-info    { background: rgba(59,130,246,.1);  border-color: rgba(59,130,246,.3);  color: #93c5fd; }
+  .alert-success { background: rgba(16,185,129,.1);  border-color: rgba(16,185,129,.3);  color: #6ee7b7; }
+  .alert-warning { background: rgba(251,191,36,.1);  border-color: rgba(251,191,36,.3);  color: #fde68a; }
+
+  /* ── Misc utilities ─────────────────────────────────────────────  */
+  .mono { font-family: var(--mono); font-size: .8rem; }
+  .card { --bs-card-color: var(--text); color: var(--text); }
+  .card-body table td { color: var(--text); }
+  .text-muted { color: var(--text-2) !important; }
+  .text-brand { color: var(--brand) !important; }
+  .text-accent { color: var(--accent) !important; }
+  a { color: #60a5fa; text-decoration: none; transition: color .12s; }
+  a:hover { color: #93c5fd; }
+
+  pre {
+    background: #060b14; border: 1px solid var(--border);
+    border-radius: var(--r-lg); padding: 1rem; overflow-x: auto;
+    color: var(--text-2); font-family: var(--mono); font-size: .8rem;
+  }
+
+  .drop-zone {
+    border: 1.5px dashed var(--border-2);
+    border-radius: var(--r-xl); padding: 3rem 2rem;
+    text-align: center; color: var(--text-3);
+    transition: all .2s; cursor: pointer;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--brand); background: rgba(0,229,201,.04);
+    color: var(--brand);
+  }
+  .drop-zone .bi { font-size: 2rem; display: block; margin-bottom: .75rem; }
+
+  .progress { background: var(--surface-3); border-radius: 99px; overflow: hidden; }
+  .progress-bar {
+    background: linear-gradient(90deg, var(--brand-dim), var(--brand));
+    border-radius: 99px;
+    transition: width .4s ease;
+  }
+
+  /* ── Breadcrumb ─────────────────────────────────────────────────  */
+  .breadcrumb-item + .breadcrumb-item::before { color: var(--text-3); }
+  .breadcrumb-item a { color: var(--text-2); }
+  .breadcrumb-item.active { color: var(--text-3); }
+  .breadcrumb { font-size: .78rem; }
+
+  /* ── Empty state ────────────────────────────────────────────────  */
+  .empty-state {
+    text-align: center; padding: 3.5rem 1.5rem; color: var(--text-3);
+  }
+  .empty-state .bi { font-size: 2.5rem; display: block; margin-bottom: 1rem; opacity: .4; }
+  .empty-state h6 { color: var(--text-2); font-weight: 600; margin-bottom: .5rem; }
+  .empty-state p  { font-size: .82rem; max-width: 300px; margin: 0 auto .75rem; }
+
+  /* ── Page header ────────────────────────────────────────────────  */
+  .page-title {
+    font-size: 1.3rem; font-weight: 700; letter-spacing: -.03em; color: var(--text);
+  }
+  .page-subtitle { font-size: .82rem; color: var(--text-3); margin-top: .15rem; }
+
+  /* ── Tooltip-style hover ────────────────────────────────────────  */
+  [title] { cursor: help; }
+
+  /* ── Bootstrap dark theme overrides (nuke residuals) ───────────  */
+  .table-dark  { --bs-table-bg: transparent; --bs-table-striped-bg: transparent; --bs-table-hover-bg: var(--surface-2); }
+  .list-group-item { background: var(--surface); border-color: var(--border); color: var(--text); }
+  .dropdown-menu { background: var(--surface-2); border-color: var(--border-2); border-radius: var(--r-lg); }
+  .dropdown-item { color: var(--text-2); font-size: .84rem; border-radius: var(--r-sm); }
+  .dropdown-item:hover { background: var(--surface-3); color: var(--text); }
+  .dropdown-divider { border-color: var(--border); }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<!-- ── Navigation ─────────────────────────────────────────────── -->
+<nav class="dh-nav">
+
+  <a class="dh-nav-brand" href="/">
+    <div class="dh-nav-brand-icon">DH</div>
+    <span class="dh-nav-brand-text">Data<span>Hub</span></span>
+  </a>
+
+  <div class="dh-nav-sep"></div>
+
+  {% if current_user %}
+  <div class="dh-nav-links">
+    <a class="dh-nav-link {% if request.url.path == '/' or '/dataset' in request.url.path %}active{% endif %}" href="/">
+      <i class="bi bi-grid-1x2"></i>Datasets
+    </a>
+    {% if current_user and current_user.role in ('uploader', 'admin') %}
+    <a class="dh-nav-link {% if '/upload' in request.url.path %}active{% endif %}" href="/upload">
+      <i class="bi bi-cloud-arrow-up"></i>Upload
+    </a>
+    {% endif %}
+    <a class="dh-nav-link {% if '/graph' in request.url.path %}active{% endif %}" href="/graph">
+      <i class="bi bi-share"></i>Graph
+    </a>
+    <a class="dh-nav-link {% if '/sweeps' in request.url.path %}active{% endif %}" href="/sweeps">
+      <i class="bi bi-intersect"></i>Sweeps
+    </a>
+    <a class="dh-nav-link {% if '/groups' in request.url.path %}active{% endif %}" href="/groups">
+      <i class="bi bi-people"></i>Groups
+    </a>
+    <a class="dh-nav-link {% if '/schema' in request.url.path %}active{% endif %}" href="/schema">
+      <i class="bi bi-diagram-3"></i>Schema
+    </a>
+    <a href="/api/docs" target="_blank" rel="noopener" class="dh-nav-link">
+      <i class="bi bi-code-slash"></i>API
+    </a>
+    {% if current_user and current_user.role == 'admin' %}
+    <div class="dh-nav-sep"></div>
+    <a class="dh-nav-link {% if '/admin' in request.url.path %}active{% endif %}" href="/admin">
+      <i class="bi bi-shield-check"></i>Admin
+    </a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if current_user %}
+  <div class="dropdown ms-auto flex-shrink-0">
+    <a class="dh-user-pill dropdown-toggle" href="#"
+       data-bs-toggle="dropdown" aria-expanded="false">
+      <div class="dh-avatar">{{ current_user.username[0].upper() }}</div>
+      <span>{{ current_user.username }}</span>
+      <span class="role-badge role-{{ current_user.role }}">{{ current_user.role }}</span>
+    </a>
+    <ul class="dropdown-menu dropdown-menu-end dh-dropdown-menu">
+      <li>
+        <a class="dh-dropdown-item" href="/profile">
+          <i class="bi bi-shield-lock" style="color:var(--accent)"></i>
+          Change Password
+        </a>
+      </li>
+      <li><hr class="dh-dropdown-divider"></li>
+      <li>
+        <a class="dh-dropdown-item danger" href="/logout">
+          <i class="bi bi-power"></i>Sign out
+        </a>
+      </li>
+    </ul>
+  </div>
+  {% endif %}
+
+</nav>
+
+<!-- ── Main content ───────────────────────────────────────────── -->
+<main class="dh-main">
+  {% block content %}{% endblock %}
+</main>
+
+<script src="/static/vendor/bootstrap/bootstrap.bundle.min.js"></script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

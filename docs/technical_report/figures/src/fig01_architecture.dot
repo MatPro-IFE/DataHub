@@ -1,0 +1,34 @@
+digraph G {
+  graph [rankdir=TB, fontname="Fira Sans", fontsize=14, nodesep=0.3, ranksep=0.5, bgcolor="white", pad=0.2, compound=true];
+  node  [shape=box, style="rounded,filled", fontname="Fira Sans", fontsize=13, color="#411454", fillcolor="#F4EFFA", penwidth=1.1];
+  edge  [fontname="Fira Sans", fontsize=11, color="#5E5566", arrowsize=0.7];
+
+  subgraph cluster_clients {
+    label="Clients"; style="rounded,dashed"; color="#B9A9C9"; fontcolor="#411454";
+    browser [label="Web browser"];
+    sdk     [label="Python client\nand datahub CLI"];
+    agents  [label="Scripts, ML,\nAI agents"];
+  }
+
+  schema [label="config/schema.yaml\nproject schema", shape=note, fillcolor="#FDE7E8", color="#E20613"];
+
+  subgraph cluster_stack {
+    label="Docker Compose stack"; labelloc=b; style="rounded"; color="#411454"; fontcolor="#411454";
+    dash   [label="Dashboard (FastAPI)\nauth, roles, orgs,\ningestion, search,\ndownload", fillcolor="#EAE1F6", color="#6B4C9A"];
+    ml     [label="ml-api (FastAPI)\ngraph, vectors,\nPCA embeddings,\nsweep design", fillcolor="#EAE1F6", color="#6B4C9A"];
+    pg     [label="PostgreSQL\n+ pgvector\nmetadata, vectors,\nfull text, RLS", shape=cylinder, fillcolor="#F1EEF2", color="#5E5566"];
+    s3     [label="S3 store\n(MinIO)\nraw files", shape=cylinder, fillcolor="#F1EEF2", color="#5E5566"];
+    neo    [label="Neo4j\nknowledge\ngraph", shape=cylinder, fillcolor="#F1EEF2", color="#5E5566"];
+    admin  [label="PostgREST, Studio\n(optional admin\nprofile)", style="rounded,dashed", fillcolor="white"];
+  }
+
+  browser -> dash [label="HTTPS"];
+  sdk -> dash [label="HTTPS"];
+  agents -> dash [label="API"];
+  schema -> dash [style=dashed, color="#E20613"];
+  schema -> ml [style=dashed, color="#E20613"];
+  dash -> pg [label="catalogue,\nusers, audit"]; dash -> s3 [label="files"];
+  dash -> ml [label="process,\nproxied queries"];
+  ml -> pg; ml -> s3 [label="fields,\nPCA basis"]; ml -> neo [label="Cypher"];
+  admin -> pg [style=dashed];
+}

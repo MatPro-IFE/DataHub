@@ -1,0 +1,19 @@
+name: Feature request
+description: Suggest an improvement or a new capability
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What do you need to do, and what stops you today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: If it can be expressed as a project schema option, describe the option.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

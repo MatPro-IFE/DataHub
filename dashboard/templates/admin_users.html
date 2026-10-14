@@ -1,0 +1,251 @@
+{#
+SPDX-FileCopyrightText: 2026 Institutt for Energiteknikk (IFE)
+
+SPDX-License-Identifier: Apache-2.0
+#}
+
+{% extends "base.html" %}
+{% block title %}User Management{% endblock %}
+
+{% block extra_head %}
+<style>
+.role-badge-admin    { background:#b91c1c }
+.role-badge-uploader { background:#0d9488 }
+.role-badge-viewer   { background:#334155 }
+.inactive-row td     { opacity: .45; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h4 class="mb-0"><i class="bi bi-people-fill me-2" style="color:#0d9488"></i>User Management</h4>
+    <p class="text-muted small mb-0 mt-1">Create accounts, assign roles, and manage access.</p>
+  </div>
+</div>
+
+{% if msg %}
+<div class="alert alert-success d-flex align-items-center gap-2 py-2">
+  <i class="bi bi-check-circle-fill"></i> {{ msg }}
+</div>
+{% endif %}
+{% if error %}
+<div class="alert alert-danger d-flex align-items-center gap-2 py-2">
+  <i class="bi bi-exclamation-circle-fill"></i> {{ error }}
+</div>
+{% endif %}
+
+<div class="row g-4">
+
+  <!-- ── User table ── -->
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header py-2 d-flex justify-content-between align-items-center">
+        <span class="fw-semibold small">
+          <i class="bi bi-list-ul me-1"></i>All Users
+          <span class="badge bg-secondary ms-1">{{ users|length }}</span>
+        </span>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-dark table-sm mb-0">
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Last login</th>
+              <th>Created</th>
+              <th class="text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for u in users %}
+          <tr class="{% if not u.is_active %}inactive-row{% endif %}" id="row-{{ u.id }}">
+            <td>
+              <i class="bi bi-person-circle me-1 text-muted"></i>
+              <strong>{{ u.username }}</strong>
+              {% if not u.is_active %}
+                <span class="badge bg-secondary ms-1" style="font-size:.65rem">inactive</span>
+              {% endif %}
+              {% if u.id == current_user.id %}
+                <span class="badge bg-dark border border-secondary ms-1" style="font-size:.65rem">you</span>
+              {% endif %}
+            </td>
+            <td class="text-muted small">{{ u.email or '—' }}</td>
+            <td>
+              <span class="badge role-badge-{{ u.role }}">{{ u.role }}</span>
+            </td>
+            <td class="text-muted small">
+              {{ u.last_login | localdt if u.last_login else '—' }}
+            </td>
+            <td class="text-muted small">
+              {{ u.created_at | localdt('%Y-%m-%d') if u.created_at else '—' }}
+            </td>
+            <td class="text-center">
+              {% if u.id != current_user.id %}
+              <div class="d-flex justify-content-center gap-1 flex-wrap">
+                <!-- Change role -->
+                <form method="post" action="/admin/users/{{ u.id }}/role" class="d-inline">
+                  <select name="role" class="form-select form-select-sm bg-dark border-secondary text-light"
+                          style="width:auto;display:inline-block"
+                          onchange="this.form.submit()" title="Change role">
+                    <option value="viewer"   {% if u.role=='viewer'   %}selected{% endif %}>viewer</option>
+                    <option value="uploader" {% if u.role=='uploader' %}selected{% endif %}>uploader</option>
+                    <option value="admin"    {% if u.role=='admin'    %}selected{% endif %}>admin</option>
+                  </select>
+                </form>
+                <!-- Toggle active -->
+                <form method="post" action="/admin/users/{{ u.id }}/toggle" class="d-inline">
+                  <button class="btn btn-sm {% if u.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}"
+                          title="{% if u.is_active %}Deactivate{% else %}Activate{% endif %}">
+                    <i class="bi {% if u.is_active %}bi-pause-circle{% else %}bi-play-circle{% endif %}"></i>
+                  </button>
+                </form>
+                <!-- Reset password -->
+                <button class="btn btn-sm btn-outline-secondary"
+                        onclick="openResetPwd('{{ u.id }}','{{ u.username }}')"
+                        title="Reset password">
+                  <i class="bi bi-key"></i>
+                </button>
+                <!-- Delete -->
+                <button class="btn btn-sm btn-outline-danger"
+                        onclick="deleteUser('{{ u.id }}','{{ u.username }}')"
+                        title="Delete user">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+              {% else %}
+              <span class="text-muted small">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Create user form ── -->
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header py-2">
+        <span class="fw-semibold small"><i class="bi bi-person-plus-fill me-1"></i>Create User</span>
+      </div>
+      <div class="card-body">
+        <form method="post" action="/admin/users">
+          <div class="mb-3">
+            <label class="form-label text-muted small">Username <span class="text-danger">*</span></label>
+            <input name="username" type="text" required
+                   class="form-control bg-dark border-secondary text-light"
+                   placeholder="alice" autocomplete="off">
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small">Email</label>
+            <input name="email" type="email"
+                   class="form-control bg-dark border-secondary text-light"
+                   placeholder="alice@example.com">
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small">Password <span class="text-danger">*</span></label>
+            <input name="password" type="password" required minlength="{{ MIN_PASSWORD_LEN }}"
+                   class="form-control bg-dark border-secondary text-light"
+                   placeholder="min {{ MIN_PASSWORD_LEN }} characters" autocomplete="new-password">
+          </div>
+          <div class="mb-4">
+            <label class="form-label text-muted small">Role</label>
+            <select name="role" class="form-select bg-dark border-secondary text-light">
+              <option value="viewer" selected>viewer — read only</option>
+              <option value="uploader">uploader — can upload data</option>
+              <option value="admin">admin — full access + user management</option>
+            </select>
+            <div class="mt-2 text-muted" style="font-size:.75rem">
+              <i class="bi bi-info-circle me-1"></i>
+              <strong>viewer</strong>: browse &amp; download only.<br>
+              <strong>uploader</strong>: viewer + upload simulations &amp; files.<br>
+              <strong>admin</strong>: uploader + manage users.
+            </div>
+          </div>
+          <button type="submit" class="btn btn-brand w-100">
+            <i class="bi bi-person-plus me-1"></i>Create Account
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Change own password -->
+    <div class="card mt-3">
+      <div class="card-header py-2">
+        <span class="fw-semibold small"><i class="bi bi-shield-lock me-1"></i>Change My Password</span>
+      </div>
+      <div class="card-body">
+        <form method="post" action="/profile/password">
+          <div class="mb-2">
+            <label class="form-label text-muted small">Current password</label>
+            <input name="current_password" type="password" required
+                   class="form-control bg-dark border-secondary text-light"
+                   placeholder="current password" autocomplete="current-password">
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small">New password</label>
+            <input name="new_password" type="password" required minlength="{{ MIN_PASSWORD_LEN }}"
+                   class="form-control bg-dark border-secondary text-light"
+                   placeholder="min {{ MIN_PASSWORD_LEN }} characters" autocomplete="new-password">
+          </div>
+          <button type="submit" class="btn btn-outline-secondary w-100">
+            <i class="bi bi-arrow-repeat me-1"></i>Update Password
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Reset password modal ── -->
+<div class="modal fade" id="resetPwdModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content bg-dark border-secondary">
+      <div class="modal-header border-secondary">
+        <h6 class="modal-title">Reset Password — <span id="resetPwdUsername"></span></h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="resetPwdForm" method="post">
+        <div class="modal-body">
+          <label class="form-label text-muted small">New password</label>
+          <input name="new_password" type="password" required minlength="{{ MIN_PASSWORD_LEN }}"
+                 class="form-control bg-dark border-secondary text-light"
+                 placeholder="min {{ MIN_PASSWORD_LEN }} characters">
+        </div>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-sm btn-outline-secondary"
+                  data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-brand">Reset</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function openResetPwd(userId, username) {
+  document.getElementById('resetPwdUsername').textContent = username;
+  document.getElementById('resetPwdForm').action = `/admin/users/${userId}/password`;
+  new bootstrap.Modal(document.getElementById('resetPwdModal')).show();
+}
+
+async function deleteUser(userId, username) {
+  if (!confirm(`Permanently delete user "${username}"? This cannot be undone.`)) return;
+  const res = await fetch(`/admin/users/${userId}`, { method: 'DELETE' });
+  if (res.ok) {
+    const row = document.getElementById(`row-${userId}`);
+    if (row) row.remove();
+  } else {
+    const data = await res.json();
+    alert('Error: ' + (data.detail || JSON.stringify(data)));
+  }
+}
+</script>
+{% endblock %}

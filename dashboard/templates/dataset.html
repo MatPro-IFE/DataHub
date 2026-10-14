@@ -1,0 +1,182 @@
+{#
+SPDX-FileCopyrightText: 2026 Institutt for Energiteknikk (IFE)
+
+SPDX-License-Identifier: Apache-2.0
+#}
+
+{% extends "base.html" %}
+{% block title %}{{ ds.name }}{% endblock %}
+{% block extra_head %}
+<style>
+.kv td{padding:.3rem .6rem;border-bottom:1px solid var(--border);font-size:.8rem;vertical-align:top}
+.kv td:first-child{color:var(--text-3);white-space:nowrap;width:40%}
+.kv td:last-child{font-family:var(--mono);color:var(--text);word-break:break-all}
+.cls{font-size:.65rem;padding:.1rem .4rem;border-radius:4px;background:var(--surface-3);color:var(--text-2);font-family:var(--mono)}
+.part-head{display:flex;justify-content:space-between;align-items:center;padding:.6rem 1rem;background:var(--surface-2);border-top:1px solid var(--border);font-weight:600}
+.small-table td,.small-table th{padding:.3rem .6rem;font-size:.78rem}
+.card-body,.part-head,#sim-params td,#sim-fields td,#nb{color:var(--text)}
+.part-head .muted{color:var(--text-2);font-weight:400}
+</style>
+{% endblock %}
+{% block content %}
+<nav class="breadcrumb mb-2"><a href="/">Datasets</a>&nbsp;/&nbsp;<span class="text-muted">{{ ds.name }}</span></nav>
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+  <div>
+    <h1 class="page-title mono" style="font-size:1.15rem">{{ ds.name }}</h1>
+    <div class="d-flex gap-2 align-items-center flex-wrap mt-1">
+      <span class="badge-status badge-{{ ds.status if ds.status in ['completed','running','failed'] else 'unknown' }}">{{ ds.status }}</span>
+      <span class="cls">{{ dtype.label if dtype else ds.dataset_type }}</span>
+      {% for t in ds.tags %}<a class="tag-pill" href="/?tag={{ t }}">{{ t }}</a>{% endfor %}
+      {% if ds.allowed_orgs or ds.allowed_groups %}<span class="cls"><i class="bi bi-lock"></i> {{ (ds.allowed_orgs + ds.allowed_groups)|join(', ') }}</span>{% endif %}
+    </div>
+  </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-ghost btn-sm" href="/api/datasets/{{ ds.id }}" target="_blank"><i class="bi bi-filetype-json"></i>JSON</a>
+    <a class="btn btn-ghost btn-sm" href="/api/datasets/{{ ds.id }}/archive.zip"><i class="bi bi-file-zip"></i>Download all</a>
+    {% if can_delete %}<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="del()"><i class="bi bi-trash"></i>Delete</button>{% endif %}
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-4 d-flex flex-column gap-3">
+    <div class="card"><div class="card-header"><i class="bi bi-info-circle me-2"></i>Metadata</div>
+      <div class="card-body p-0"><table class="kv w-100">
+        <tr><td>ID</td><td>{{ ds.id }}</td></tr>
+        <tr><td>Type</td><td>{{ ds.dataset_type }}</td></tr>
+        <tr><td>Uploaded by</td><td>{{ ds.uploaded_by or '-' }}</td></tr>
+        <tr><td>Created</td><td>{{ ds.created_at|localdt }}</td></tr>
+        {% if ds.started_at %}<tr><td>Started</td><td>{{ ds.started_at|localdt }}</td></tr>{% endif %}
+        {% if ds.finished_at %}<tr><td>Finished</td><td>{{ ds.finished_at|localdt }}</td></tr>{% endif %}
+        <tr><td>Files</td><td>{{ ds.visible_files }} visible of {{ ds.file_count }} · {{ human_size(ds.total_bytes) }}</td></tr>
+        <tr><td>Schema version</td><td>{{ ds.schema_hash }}</td></tr>
+        {% for k, v in ds.metadata.items() %}<tr><td>{{ k }}</td><td>{{ v }}</td></tr>{% endfor %}
+        {% if ds.notes %}<tr><td>Notes</td><td style="font-family:var(--font)">{{ ds.notes }}</td></tr>{% endif %}
+      </table></div></div>
+
+    <div class="card"><div class="card-header"><i class="bi bi-sliders me-2"></i>Parameters</div>
+      <div class="card-body p-0"><table class="kv w-100">
+        {% for k, v in ds.parameters.items() %}
+        <tr><td>{{ plabels[k].label if k in plabels else k }}{% if k in plabels and plabels[k].unit %} [{{ plabels[k].unit }}]{% endif %}</td><td>{{ fmt_value(v) }}</td></tr>
+        {% else %}<tr><td colspan="2" class="text-muted">No parameters extracted</td></tr>{% endfor %}
+      </table></div></div>
+
+    <div class="card"><div class="card-header"><i class="bi bi-graph-up me-2"></i>Quantities of interest</div>
+      <div class="card-body p-0"><table class="kv w-100">
+        {% for q in ds.quantities %}
+        <tr><td>{{ qlabels[q.name].label if q.name in qlabels else q.name }}</td><td>{{ fmt_value(q.value) }} {{ q.unit or '' }}</td></tr>
+        {% else %}<tr><td colspan="2" class="text-muted">None</td></tr>{% endfor %}
+      </table></div></div>
+
+    <div class="card" id="access"><div class="card-header"><i class="bi bi-shield-lock me-2"></i>Access</div>
+      <div class="card-body small">
+        {% if error %}<div class="mb-2" style="color:var(--red)">{{ error }}</div>{% endif %}
+        {% if not ds.allowed_orgs and not ds.allowed_groups %}
+          <div>Visible to every user.</div>
+        {% else %}
+          <div>Visible to admins, the uploader{% if ds.allowed_orgs %}, organisations <b>{{ ds.allowed_orgs|join(', ') }}</b>{% endif %}{% if ds.allowed_groups %}, groups <b>{{ ds.allowed_groups|join(', ') }}</b>{% endif %}.</div>
+        {% endif %}
+        {% if can_delete %}
+        <form method="post" action="/dataset/{{ ds.id }}/access" class="mt-2">
+          {% if ORGANIZATIONS %}<div class="text-muted mt-1">Organisations</div>
+          <div class="d-flex flex-wrap gap-2">{% for o in ORGANIZATIONS %}
+            <label><input type="checkbox" name="org" value="{{ o }}" {% if o in ds.allowed_orgs %}checked{% endif %}> {{ o }}</label>{% endfor %}</div>{% endif %}
+          {% if group_choices %}<div class="text-muted mt-1">Project groups</div>
+          <div class="d-flex flex-wrap gap-2">{% for g in group_choices %}
+            <label><input type="checkbox" name="group" value="{{ g }}" {% if g in ds.allowed_groups %}checked{% endif %}> {{ g }}</label>{% endfor %}</div>{% endif %}
+          <button class="btn btn-ghost btn-sm mt-2">Save access</button>
+          <div class="text-muted mt-1">Nothing ticked = visible to every user.</div>
+        </form>
+        {% endif %}
+      </div></div>
+
+    {% if can_share %}
+    <div class="card" id="sharing"><div class="card-header"><i class="bi bi-link-45deg me-2"></i>Sharing links</div>
+      <div class="card-body small">
+        {% if new_share_url %}
+        <div class="mb-2 p-2" style="background:var(--surface-2);border:1px solid var(--brand);border-radius:6px">
+          <div class="mb-1"><b>New link</b> (shown only once, copy it now):</div>
+          <div class="d-flex gap-2"><input class="form-control form-control-sm mono" id="newlink" value="{{ new_share_url }}" readonly>
+          <button type="button" class="btn btn-brand btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('newlink').value);this.textContent='Copied'">Copy</button></div>
+        </div>{% endif %}
+        {% if share_error %}<div class="mb-2" style="color:var(--red)">{{ share_error }}</div>{% endif %}
+        <form method="post" action="/dataset/{{ ds.id }}/shares" class="d-flex flex-wrap gap-2 align-items-end">
+          <label>Days<input class="form-control form-control-sm" name="days" value="7" style="width:70px"></label>
+          <label>Max downloads<input class="form-control form-control-sm" name="max_downloads" placeholder="no limit" style="width:100px"></label>
+          <label class="flex-grow-1">Note<input class="form-control form-control-sm" name="note" placeholder="who it is for"></label>
+          <button class="btn btn-brand btn-sm">Create link</button>
+        </form>
+        <div class="text-muted mt-1">Anyone with the link can view and download this dataset without an account until it expires (at most {{ '%g'|format(share_max_days) }} days). Downloads through links are logged.</div>
+        {% if shares %}
+        <table class="w-100 mt-2 small-table">
+          {% for l in shares %}<tr>
+            <td><span class="cls">{{ l.status }}</span></td>
+            <td>{{ l.note or '' }}<div class="text-muted">by {{ l.created_by }}, expires {{ l.expires_at|localdt }}</div></td>
+            <td class="mono text-end">{{ l.download_count }}{% if l.max_downloads %}/{{ l.max_downloads }}{% endif %}</td>
+            <td class="text-end">{% if l.status == 'active' %}<form method="post" action="/shares/{{ l.id }}/revoke"><button class="btn btn-ghost btn-sm" style="color:var(--red)">Revoke</button></form>{% endif %}</td>
+          </tr>{% endfor %}
+        </table>{% endif %}
+      </div></div>
+    {% endif %}
+  </div>
+
+  <div class="col-lg-8 d-flex flex-column gap-3">
+    <div class="card"><div class="card-header"><i class="bi bi-folder2-open me-2"></i>Files</div>
+      <div class="card-body p-0">
+        {% macro filetable(files) %}
+        <table class="dh-table w-100 small-table"><thead><tr><th>File</th><th>Class</th><th>Time</th><th class="text-end">Size</th><th></th></tr></thead><tbody>
+        {% for f in files %}<tr><td class="mono">{{ f.relpath }}</td><td><span class="cls">{{ class_labels.get(f.file_class, f.file_class) }}</span></td>
+          <td class="mono">{{ fmt_value(f.time_value) if f.time_value is not none else '' }}</td>
+          <td class="mono text-end">{{ human_size(f.size_bytes) }}</td>
+          <td class="text-end"><a class="btn btn-ghost btn-sm" href="/api/download/{{ f.id }}" title="Download"><i class="bi bi-download"></i></a></td></tr>{% endfor %}
+        </tbody></table>
+        {% endmacro %}
+        {% if ds.files %}{{ filetable(ds.files) }}{% endif %}
+        {% for p in ds.parts %}
+          <div class="part-head"><span><i class="bi bi-layers me-2"></i>{{ dtype.parts.label if dtype and dtype.parts else 'Part' }} {{ p.label }}</span>
+            <span class="muted small">{{ p.files|length }} files{% for q in p.quantities %} · {{ q.name }} = {{ fmt_value(q.value) }} {{ q.unit or '' }}{% endfor %}</span></div>
+          {{ filetable(p.files) }}
+        {% endfor %}
+      </div></div>
+
+    <div class="row g-3">
+      <div class="col-md-6"><div class="card h-100"><div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-bullseye me-2"></i>Similar by parameters</span>
+        <button class="btn btn-ghost btn-sm" onclick="loadSim('params')">Load</button></div>
+        <div class="card-body small" id="sim-params"><span class="text-muted">Nearest datasets by cosine similarity of parameter vectors.</span></div></div></div>
+      <div class="col-md-6"><div class="card h-100"><div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-grid-3x3 me-2"></i>Similar by fields</span>
+        <span>{% if current_user.role in ('uploader','admin') %}<button class="btn btn-ghost btn-sm" onclick="embed()">Embed fields</button>{% endif %}
+        <button class="btn btn-ghost btn-sm" onclick="loadSim('fields')">Load</button></span></div>
+        <div class="card-body small" id="sim-fields"><span class="text-muted">Nearest datasets by PCA embedding of spatial fields.</span></div></div></div>
+    </div>
+    <div class="card"><div class="card-header d-flex justify-content-between align-items-center"><span><i class="bi bi-share me-2"></i>Graph neighbours</span>
+      <button class="btn btn-ghost btn-sm" onclick="loadNb()">Load</button></div><div class="card-body small" id="nb"></div></div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+const ID = "{{ ds.id }}";
+function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+async function loadSim(kind){
+  const el=document.getElementById('sim-'+kind); el.textContent='Loading ...';
+  const r=await fetch(`/api/similar/${kind}/${ID}?n=8`); const rows=await r.json();
+  if(!r.ok){el.textContent=rows.detail||'Error';return}
+  el.innerHTML=rows.length?'<table class="w-100">'+rows.map(x=>`<tr><td style="max-width:0;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><a href="/dataset/${x.dataset_id}" class="mono" title="${esc(x.name)}">${esc(x.name)}</a> <span class="cls">${esc(x.field||x.dataset_type)}</span></td><td class="text-end mono ps-2">${x.score.toFixed(3)}</td></tr>`).join('')+'</table>':'<span class="text-muted">No results yet.</span>';
+}
+async function embed(){
+  const el=document.getElementById('sim-fields'); el.textContent='Embedding fields ...';
+  const r=await fetch(`/api/embed/${ID}`,{method:'POST'}); const j=await r.json();
+  el.textContent=r.ok?`${j.embeddings.length} field embedding(s): `+j.embeddings.map(e=>e.field+(e.status?' ('+e.status+')':'')).join(', '):(j.detail||'Error');
+}
+async function loadNb(){
+  const el=document.getElementById('nb'); el.textContent='Loading ...';
+  const r=await fetch(`/api/graph/neighbors/${ID}`); const rows=await r.json();
+  el.innerHTML=rows.length?rows.map(x=>`<div><span class="cls">${esc(x.relation)}</span> ${x.kind==='dataset'?`<a href="/dataset/${x.id}" class="mono">${esc(x.name)}</a>`:esc(x.name)} ${x.score!=null?'<span class="text-muted">'+(+x.score).toFixed(3)+'</span>':''}</div>`).join(''):'<span class="text-muted">No neighbours.</span>';
+}
+async function del(){
+  if(!confirm('Delete this dataset and all its files permanently?'))return;
+  const r=await fetch(`/api/datasets/${ID}`,{method:'DELETE'}); if(r.ok)location.href='/'; else alert((await r.json()).detail);
+}
+</script>
+{% endblock %}

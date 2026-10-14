@@ -1,0 +1,14 @@
+digraph L {
+  graph [layout=neato, splines=true, fontname="Fira Sans", pad=0.15];
+  node  [shape=box, style="rounded,filled", fontname="Fira Sans", fontsize=12, color="#411454", fillcolor="#F4EFFA", width=1.75, height=0.85, fixedsize=true];
+  edge  [color="#5E5566", arrowsize=0.7, fontname="Fira Sans", fontsize=10];
+  a [label="1  Deploy\nfresh instance,\nnew secrets", pos="0,1.3!"];
+  b [label="2  Ingest\nschema-driven\nmetadata", pos="2.3,1.3!"];
+  c [label="3  Use and share\nsearch, graph,\nagents, sweeps", pos="4.6,1.3!"];
+  d [label="4  Curate\nclear records\nfor release", pos="6.9,1.3!"];
+  e [label="5  Publish\nrepository export\n(DOI)", pos="6.9,0!", fillcolor="#EAE1F6", color="#6B4C9A"];
+  f [label="6  Hand-over\norganisations\nretrieve their data", pos="4.6,0!"];
+  g [label="7  Decommission\ncatalogue export,\ndelete storage", pos="2.3,0!", fillcolor="#FDE7E8", color="#E20613"];
+  a -> b; b -> c; c -> d; d -> e; e -> f; f -> g;
+  e -> c [style=dashed, label="DOI stored back"];
+}

@@ -1,0 +1,151 @@
+# SPDX-FileCopyrightText: 2026 Institutt for Energiteknikk (IFE)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# =====================================================================
+# DataHub project schema (example)
+#
+# Every DataHub instance is configured by one schema file like this one.
+# Copy it to config/schema.yaml and adapt it to your project: the dataset
+# types you store, the parameters that describe a run, how files are
+# classified, which scalar results to extract and which fields to embed.
+#
+# Nothing in the DataHub code depends on the names used below. They describe
+# a fictitious parametric cooling study and are only an example; replace them.
+# The file is validated at start-up; errors are reported with their location.
+# =====================================================================
+schema_version: 1
+
+instance:
+  name: Example DataHub
+  description: Parametric cooling study of a heated block (example schema)
+
+# ---------------------------------------------------------------------
+# Dataset types. A dataset is one upload: a simulation run, an experiment,
+# a measurement campaign, a reference file set ... Each type may define an
+# optional sub-level ("parts"), for example stages, load cases, time windows
+# or MPI ranks, recognised from sub-folder names.
+# ---------------------------------------------------------------------
+dataset_types:
+  - id: simulation
+    label: Simulation run
+    parts:
+      label: Stage
+      folder_pattern: "stage_*"      # sub-folders matching this glob become parts
+  - id: experiment
+    label: Experiment
+  - id: reference
+    label: Reference data          # meshes, material tables, calibration files ...
+
+# ---------------------------------------------------------------------
+# Parameters: the inputs that describe a dataset. They drive search filters,
+# the parameter vector used for similarity, and the parameter sweeps.
+#   type: float | int | bool | category | text
+#   range: [min, max] scales numeric values to [0, 1] in the vector and is the
+#          default range offered for sweeps
+#   in_vector: false excludes a parameter from the similarity vector
+# ---------------------------------------------------------------------
+parameters:
+  - {name: inlet_temperature, label: Initial temperature, unit: K, type: float, range: [600, 800]}
+  - {name: htc, label: Heat-transfer coefficient, unit: W/m2K, type: float, range: [200, 2000]}
+  - {name: load, label: Applied load, unit: MPa, type: float, range: [0.0, 0.3]}
+  - {name: scale, label: Geometry scale, type: float, range: [0.5, 1.5]}
+  - {name: cooling, label: Active cooling, type: bool}
+  - {name: geometry, label: Geometry, type: category, values: [block, plate, cylinder]}
+  - {name: mesh_file, label: Mesh file, type: text, in_vector: false}
+
+# Where parameter values come from. Sources are applied in order; later
+# sources override earlier ones. Unknown keys are kept in the parameter
+# document but are not used for vectors or filters.
+parameter_sources:
+  - type: json_file                  # a JSON or YAML file in the dataset root
+    pattern: "parameters.json"
+  - type: folder_name                # name=value pairs in the folder name
+    regex: "__(?P<name>[A-Za-z]\\w*)=(?P<value>[^_]+)"
+  - type: key_value_file             # "key = value" or "key: value" lines
+    pattern: "run.cfg"
+
+# ---------------------------------------------------------------------
+# File classes. Each file is assigned the first class whose patterns match
+# its file name (case-insensitive glob). Unmatched files get class "other".
+#   time_regex:      optional; first group = simulated time, searched in the
+#                    first 4 kB of the file
+#   time_from_name:  optional; first group of a regex on the file name
+# ---------------------------------------------------------------------
+file_classes:
+  - {id: field_snapshot, label: Field snapshot, time_regex: "TIME[^\\n]*\\n\\s*([-+0-9.eE]+)",
+     patterns: ["*.vtk", "*.vtu", "*.xdmf", "*.xmf", "*.h5", "*.hdf5", "*.exo", "*.e"]}
+  - {id: time_series, label: Time series, patterns: ["*.csv"]}
+  - {id: summary, label: Result summary, patterns: ["summary.json", "summary.txt"]}
+  - {id: input, label: Input, patterns: ["parameters.json", "*.cfg", "*.inp", "*.yaml"]}
+  - {id: mesh, label: Mesh, patterns: ["*.msh", "*.mesh", "*.neu", "*.stl"]}
+  - {id: image, label: Image, patterns: ["*.png", "*.jpg", "*.jpeg", "*.tif", "*.tiff"]}
+  - {id: spreadsheet, label: Spreadsheet, patterns: ["*.xlsx", "*.xls"]}
+  - {id: log, label: Log, patterns: ["*.log", "stdout", "stderr", "*.err"]}
+skip_patterns: ["*.lock", "*.tmp", "~*"]
+
+# ---------------------------------------------------------------------
+# Quantities of interest: named scalar results extracted after upload.
+# Supported sources (one per quantity):
+#   {file_class, json_key}             value of a key in a JSON file (dotted path)
+#   {file_class, regex}                first group of a regex in a text file
+#   {file_class, csv_column, reduce}   reduce = max | min | mean | last | first
+# Extracted per part when the dataset has parts, otherwise per dataset.
+# ---------------------------------------------------------------------
+quantities:
+  - {name: peak_temperature, label: Peak temperature, unit: K, source: {file_class: summary, json_key: peak_temperature}}
+  - {name: cooling_time, label: Time to 400 K, unit: s, source: {file_class: summary, json_key: cooling_time}}
+  - {name: max_probe_temperature, label: Max probe temperature, unit: K, source: {file_class: time_series, csv_column: probe_1, reduce: max}}
+
+# Optional: run timing from a log file
+timing:
+  file_class: log
+  start_regex: "^(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) .*start"
+  end_regex: "^(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) .*end"
+  format: "%Y-%m-%d %H:%M:%S"
+
+# ---------------------------------------------------------------------
+# Field embeddings: spatial fields in snapshot files are compressed with
+# incremental PCA into a fingerprint used for result similarity.
+#   reader: auto (by file extension) | vtk | npy | hdf5 | xdmf | exodus
+#     vtk     .vtk .vtu .vtp .vts .vtr .vti  point and cell arrays
+#     npy     .npy .npz                      one field per array
+#     hdf5    .h5 .hdf5 .hdf                 numeric datasets (see hdf5 options)
+#     xdmf    .xdmf .xmf                     temporal collections; HDF5 or inline data
+#     exodus  .exo .e .ex2 .gen              nodal (and element) variables, all steps
+#   Files holding a time series (XDMF, Exodus, HDF5 with time_axis) give one
+#   snapshot per step. HDF5 files referenced by an XDMF file are read through it.
+#   names:  field names to embed (globs allowed); empty = all arrays found
+#   max_snapshots: longer series are sampled evenly
+#   Check what a reader sees with:  datahub fields path/to/file
+# ---------------------------------------------------------------------
+fields:
+  file_class: field_snapshot
+  reader: auto
+  names: []
+  pca_components: 16
+  max_snapshots: 20
+  hdf5:
+    paths: []            # e.g. ["results/*"]; empty = every numeric dataset
+    # time_axis: 0       # first axis of each dataset is time
+    # time_path: time    # dataset with the time values
+  exodus:
+    element_variables: false
+
+# ---------------------------------------------------------------------
+# Knowledge graph
+#   shared_resources: parameters whose values identify a shared resource;
+#   datasets with the same value are linked through a resource node.
+# ---------------------------------------------------------------------
+graph:
+  shared_resources:
+    - {parameter: mesh_file, label: Mesh}
+  parameter_edge_threshold: 0.85
+  field_edge_threshold: 0.80
+  neighbours: 50
+
+# Free-text metadata fields offered on the upload form (stored as JSON)
+metadata_fields:
+  - {name: site, label: Site or laboratory}
+  - {name: operator, label: Operator}
+  - {name: instrument, label: Instrument or code version}

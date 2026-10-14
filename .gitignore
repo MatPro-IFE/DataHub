@@ -1,0 +1,33 @@
+# Secrets: never commit
+docker/.env
+.env
+*.pem
+*.key
+
+# Instance schema (keep it in your deployment repository; the example stays tracked)
+config/schema.yaml
+
+# Runtime data
+data/
+docker/data/
+demo_data/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+.pytest_cache/
+
+# Editors / OS
+.vscode/
+.idea/
+.cursor/
+.DS_Store
+*.swp
+
+# Build outputs of the technical report
+docs/technical_report/build/

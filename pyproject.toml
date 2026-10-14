@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "datahub-sdk"
+version = "1.0.0"
+description = "Schema engine, Python client and command-line tool for DataHub, a self-hosted catalogue for simulation and experimental data"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+authors = [
+  { name = "Sayan Adhikari" },
+  { name = "Gulshan Noorsumar" },
+  { name = "Øyvind Jensen" },
+]
+dependencies = ["requests>=2.31", "pyyaml>=6.0"]
+keywords = ["research data management", "FAIR", "simulation data", "knowledge graph", "digital twin", "data catalogue"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: Apache Software License",
+  "Topic :: Scientific/Engineering",
+]
+
+[project.urls]
+Homepage = "https://github.com/MatPro-IFE/DataHub"
+Documentation = "https://github.com/MatPro-IFE/DataHub/tree/main/docs"
+Issues = "https://github.com/MatPro-IFE/DataHub/issues"
+Changelog = "https://github.com/MatPro-IFE/DataHub/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+demo = ["numpy>=1.26", "scipy>=1.12"]
+fields = ["numpy>=1.26", "scipy>=1.12", "h5py>=3.10", "defusedxml>=0.7"]
+test = ["pytest>=8", "numpy>=1.26", "scipy>=1.12", "h5py>=3.10", "defusedxml>=0.7"]
+
+[project.scripts]
+datahub = "datahub_sdk.cli:main"
+
+[tool.setuptools]
+packages = ["datahub_sdk"]

@@ -1,0 +1,22 @@
+{#
+SPDX-FileCopyrightText: 2026 Institutt for Energiteknikk (IFE)
+
+SPDX-License-Identifier: Apache-2.0
+#}
+
+{% extends "base.html" %}
+{% block title %}Sharing links{% endblock %}
+{% block extra_head %}<style>.cls{font-size:.65rem;padding:.1rem .4rem;border-radius:4px;background:var(--surface-3);color:var(--text-2);font-family:var(--mono)}
+.dh-table td{color:var(--text)}</style>{% endblock %}
+{% block content %}
+<h1 class="page-title">Sharing links</h1>
+<p class="page-subtitle mb-4">All time-limited links of this instance (latest 500). Longest allowed lifetime: {{ '%g'|format(max_days) }} days{% if max_days <= 0 %} (links disabled){% endif %}.</p>
+<div class="card"><div class="card-body p-0">
+<table class="dh-table w-100"><thead><tr><th>Status</th><th>Dataset</th><th>Created by</th><th>Created</th><th>Expires</th><th>Downloads</th><th>Note</th><th></th></tr></thead><tbody>
+{% for l in shares %}<tr><td><span class="cls">{{ l.status }}</span></td><td><a href="/dataset/{{ l.dataset_id }}" class="mono">{{ l.dataset }}</a></td>
+  <td>{{ l.created_by }}</td><td class="mono small">{{ l.created_at|localdt }}</td><td class="mono small">{{ l.expires_at|localdt }}</td>
+  <td class="mono">{{ l.download_count }}{% if l.max_downloads %}/{{ l.max_downloads }}{% endif %}</td><td class="small">{{ l.note or '' }}</td>
+  <td>{% if l.status == 'active' %}<form method="post" action="/shares/{{ l.id }}/revoke"><button class="btn btn-ghost btn-sm" style="color:var(--red)">Revoke</button></form>{% elif l.revoked_by %}<span class="small text-muted">by {{ l.revoked_by }}</span>{% endif %}</td></tr>
+{% else %}<tr><td colspan="8" class="text-muted p-4">No sharing links.</td></tr>{% endfor %}
+</tbody></table></div></div>
+{% endblock %}

@@ -1,0 +1,139 @@
+{#
+SPDX-FileCopyrightText: 2026 Institutt for Energiteknikk (IFE)
+
+SPDX-License-Identifier: Apache-2.0
+#}
+
+{% extends "base.html" %}
+{% block title %}Upload{% endblock %}
+{% block extra_head %}
+<style>
+.drop{border:2px dashed var(--border-2);border-radius:var(--r-xl);padding:2.2rem;text-align:center;color:var(--text-2);transition:all .15s}
+.drop.over{border-color:var(--brand);background:var(--brand-glow)}
+.cls{font-size:.65rem;padding:.1rem .4rem;border-radius:4px;background:var(--surface-3);color:var(--text-2);font-family:var(--mono)}
+#preview td{padding:.2rem .5rem;font-size:.76rem}
+</style>
+{% endblock %}
+{% block content %}
+<h1 class="page-title">Upload a dataset</h1>
+<p class="page-subtitle mb-4">Drop a folder (or select files). Files are classified, parameters and quantities are extracted
+according to the project schema <a href="/schema">({{ SCHEMA.instance_name }})</a>.</p>
+
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card"><div class="card-body">
+      <div class="mb-2"><label class="form-label">Dataset type *</label>
+        <select class="form-select" id="dtype" onchange="preview()">
+          {% for t in SCHEMA.dataset_types %}<option value="{{ t.id }}">{{ t.label }}</option>{% endfor %}
+        </select></div>
+      <div class="mb-2"><label class="form-label">Name * <span class="text-muted">(unique; defaults to the folder name)</span></label>
+        <input class="form-control mono" id="name"></div>
+      <div class="mb-2"><label class="form-label">Tags <span class="text-muted">(comma-separated)</span></label><input class="form-control" id="tags"></div>
+      <div class="mb-2"><label class="form-label">Status</label>
+        <select class="form-select" id="status">{% for s in ['completed','running','failed','registered','unknown'] %}<option>{{ s }}</option>{% endfor %}</select></div>
+      {% for m in SCHEMA.metadata_fields %}
+      <div class="mb-2"><label class="form-label">{{ m.label or m.name }}</label><input class="form-control meta" data-key="{{ m.name }}"></div>
+      {% endfor %}
+      <div class="mb-2"><label class="form-label">Notes</label><textarea class="form-control" id="notes" rows="2"></textarea></div>
+      <div class="mb-2"><label class="form-label">Access</label>
+        {% if ORGANIZATIONS %}
+        <div class="d-flex flex-wrap gap-3 small">
+          {% for o in ORGANIZATIONS %}<label style="color:var(--text)"><input type="checkbox" class="org" value="{{ o }}"> {{ o }}</label>{% endfor %}
+        </div>
+        {% else %}<div class="text-muted small">No organisations configured.</div>{% endif %}
+        {% if group_choices %}
+        <div class="d-flex flex-wrap gap-3 small mt-2">
+          {% for g in group_choices %}<label style="color:var(--text)"><input type="checkbox" class="grp" value="{{ g }}"> <i class="bi bi-people"></i> {{ g }}</label>{% endfor %}
+        </div>
+        {% endif %}
+        <div class="text-muted small">Leave everything unticked to make the dataset visible to every user. Ticked organisations and groups can see it (and you and admins).</div>
+      </div>
+    </div></div>
+  </div>
+  <div class="col-lg-7">
+    <div class="drop" id="drop">
+      <i class="bi bi-folder2-open" style="font-size:2rem;color:var(--brand)"></i>
+      <div class="mt-2">Drag a folder here, or</div>
+      <div class="d-flex gap-2 justify-content-center mt-2">
+        <label class="btn btn-brand btn-sm">Choose folder<input type="file" id="pickDir" webkitdirectory multiple hidden></label>
+        <label class="btn btn-ghost btn-sm">Choose files<input type="file" id="pickFiles" multiple hidden></label>
+      </div>
+    </div>
+    <div class="card mt-3"><div class="card-header d-flex justify-content-between"><span>Preview</span><span id="summary" class="text-muted small"></span></div>
+      <div class="card-body p-0" style="max-height:330px;overflow:auto"><table class="w-100" id="preview"></table></div></div>
+    <div class="d-flex align-items-center gap-3 mt-3">
+      <button class="btn btn-brand btn-md" id="go" onclick="upload()" disabled><i class="bi bi-cloud-arrow-up"></i>Upload</button>
+      <div class="progress flex-grow-1" style="height:8px"><div class="progress-bar" id="bar" style="width:0%"></div></div>
+      <span id="msg" class="small"></span>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+let items=[]; // {file, rel}
+const $=id=>document.getElementById(id);
+function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function setFiles(list, rootName){
+  items=list; if(!items.length)return;
+  if(!$('name').value && rootName) $('name').value=rootName.replace(/[^\w.\-=+@,]/g,'_');
+  $('go').disabled=false; preview();
+}
+function fromInput(files){
+  const arr=[...files]; let root='';
+  const list=arr.map(f=>{const p=f.webkitRelativePath||f.name; const parts=p.split('/'); if(parts.length>1){root=parts[0]; parts.shift();} return {file:f, rel:parts.join('/')}});
+  setFiles(list, root || (arr[0]?arr[0].name.replace(/\.[^.]+$/,''):''));
+}
+$('pickDir').onchange=e=>fromInput(e.target.files);
+$('pickFiles').onchange=e=>fromInput(e.target.files);
+const drop=$('drop');
+drop.ondragover=e=>{e.preventDefault();drop.classList.add('over')};
+drop.ondragleave=()=>drop.classList.remove('over');
+drop.ondrop=async e=>{
+  e.preventDefault(); drop.classList.remove('over');
+  const entries=[...e.dataTransfer.items].map(i=>i.webkitGetAsEntry()).filter(Boolean);
+  const out=[]; let root='';
+  async function walk(entry, path){
+    if(entry.isFile){ await new Promise(res=>entry.file(f=>{out.push({file:f, rel:path+f.name}); res();})); }
+    else { const reader=entry.createReader(); let batch;
+      do { batch=await new Promise(res=>reader.readEntries(res)); for(const c of batch) await walk(c, path+entry.name+'/'); } while(batch.length); }
+  }
+  if(entries.length===1 && entries[0].isDirectory){ root=entries[0].name;
+    const reader=entries[0].createReader(); let batch;
+    do { batch=await new Promise(res=>reader.readEntries(res)); for(const c of batch) await walk(c,''); } while(batch.length);
+  } else { for(const en of entries) await walk(en,''); }
+  setFiles(out, root);
+};
+async function preview(){
+  if(!items.length)return;
+  const fd=new FormData(); fd.append('relpaths', JSON.stringify(items.map(i=>i.rel))); fd.append('dataset_type', $('dtype').value);
+  const r=await fetch('/api/upload/preview',{method:'POST',body:fd}); const rows=await r.json();
+  const counts={}; rows.forEach(x=>counts[x.file_class]=(counts[x.file_class]||0)+1);
+  $('summary').textContent=items.length+' files · '+Object.entries(counts).map(([k,v])=>k+': '+v).join(', ');
+  $('preview').innerHTML=rows.slice(0,400).map(x=>`<tr><td class="mono">${esc(x.relpath)}</td><td>${x.part?'<span class="cls">'+esc(x.part)+'</span>':''}</td><td><span class="cls">${esc(x.file_class)}</span></td></tr>`).join('');
+}
+async function upload(){
+  $('go').disabled=true; $('msg').textContent='Starting ...';
+  const fd=new FormData();
+  fd.append('name',$('name').value.trim()); fd.append('dataset_type',$('dtype').value); fd.append('tags',$('tags').value);
+  fd.append('notes',$('notes').value); fd.append('status',$('status').value);
+  const meta={}; document.querySelectorAll('.meta').forEach(m=>{if(m.value.trim())meta[m.dataset.key]=m.value.trim()});
+  fd.append('metadata',JSON.stringify(meta));
+  fd.append('allowed_orgs',[...document.querySelectorAll('.org:checked')].map(c=>c.value).join(','));
+  fd.append('allowed_groups',[...document.querySelectorAll('.grp:checked')].map(c=>c.value).join(','));
+  let r=await fetch('/api/upload/start',{method:'POST',body:fd}); let j=await r.json();
+  if(!r.ok){$('msg').textContent=j.detail; $('go').disabled=false; return}
+  const sid=j.upload_id; const todo=items.filter(i=>true); let done=0, failed=null;
+  async function worker(){ while(todo.length && !failed){ const it=todo.shift();
+      const f=new FormData(); f.append('upload_id',sid); f.append('relpath',it.rel); f.append('file',it.file);
+      const rr=await fetch('/api/upload/file',{method:'POST',body:f}); if(!rr.ok){failed=(await rr.json()).detail; break}
+      done++; $('bar').style.width=(100*done/items.length)+'%'; $('msg').textContent=`${done}/${items.length} files`; } }
+  await Promise.all([worker(),worker(),worker(),worker()]);
+  if(failed){ const a=new FormData(); a.append('upload_id',sid); await fetch('/api/upload/abort',{method:'POST',body:a}); $('msg').textContent='Failed: '+failed; $('go').disabled=false; return }
+  $('msg').textContent='Processing ...';
+  const c=new FormData(); c.append('upload_id',sid);
+  r=await fetch('/api/upload/commit',{method:'POST',body:c}); j=await r.json();
+  if(r.ok) location.href='/dataset/'+j.dataset_id; else { $('msg').textContent=j.detail; $('go').disabled=false }
+}
+</script>
+{% endblock %}
