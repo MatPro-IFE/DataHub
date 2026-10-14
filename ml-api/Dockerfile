@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-FROM python:3.11-slim
+FROM python:3.14-slim
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 HOME=/tmp
 RUN groupadd --system --gid 10001 datahub && useradd --system --uid 10001 --gid 10001 --no-create-home --home-dir /tmp datahub
