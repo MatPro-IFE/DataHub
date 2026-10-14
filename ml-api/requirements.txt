@@ -7,5 +7,5 @@ scikit-learn>=1.4
 numpy>=1.26
 scipy>=1.12
 h5py>=3.10
-defusedxml>=0.7
+defusedxml>=0.7.1
 vtk>=9.3
