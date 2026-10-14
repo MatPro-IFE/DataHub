@@ -8,4 +8,4 @@ minio>=7.2
 psycopg2-binary>=2.9
 itsdangerous>=2.1
 passlib[bcrypt]>=1.7
-bcrypt>=3.2,<4.0
+bcrypt>=5.0.0,<6.0
