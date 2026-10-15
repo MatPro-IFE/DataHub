@@ -11,7 +11,7 @@ DataHub's own code is licensed under Apache-2.0 and its report and documentation
 | vis-network | 9.1.9 | Apache-2.0 or MIT | `dashboard/static/vendor/vis-network` |
 | Swagger UI | 5.17.14 | Apache-2.0 | `dashboard/static/vendor/swagger-ui` |
 | Inter, JetBrains Mono | fontsource 5.0 | OFL-1.1 | `dashboard/static/vendor/fonts` |
-| Fira Sans | 4 | OFL-1.1 | `docs/technical_report/brand/fonts` |
+| Fira Sans | 4 | OFL-1.1 | `docs/technical_note/brand/fonts` |
 
 The licence texts are in `LICENSES/` and next to each component.
 

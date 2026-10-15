@@ -29,5 +29,5 @@ build/
 .DS_Store
 *.swp
 
-# Build outputs of the technical report
-docs/technical_report/build/
+# Build outputs of the technical note
+docs/technical_note/build/

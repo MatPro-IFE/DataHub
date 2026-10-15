@@ -1,6 +1,6 @@
 # DataHub
 
-[![Technical report DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23378345.svg)](https://doi.org/10.5281/zenodo.23378345)
+[![Technical note DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23378345.svg)](https://doi.org/10.5281/zenodo.23378345)
 
 **A self-hosted, schema-driven catalogue for simulation and experimental data, with a knowledge graph, similarity search and parameter-sweep design.**
 
@@ -8,9 +8,9 @@ DataHub stores the raw files of simulation runs, experiments and reference data 
 
 DataHub is generic. Everything specific to a project (dataset types, input parameters, how files are classified, which scalar results to extract, which spatial fields to compare) is described in one YAML file, the **project schema**. Each project creates its own instance and adapts the schema; no code changes are needed.
 
-Developed at the Institute for Energy Technology (IFE), Norway. Authors: Sayan Adhikari, Gulshan Noorsumar and Øyvind Jensen.
+Developed in the Computational Materials Processing department (MatPro) at the Institute for Energy Technology (IFE), Norway. Authors: Sayan Adhikari, Gulshan Noorsumar and Øyvind Jensen.
 
-![Architecture](docs/technical_report/figures/fig01_architecture.png)
+![Architecture](docs/technical_note/figures/fig01_architecture.png)
 
 ## Features
 
@@ -83,7 +83,7 @@ More in [docs/API.md](docs/API.md).
 
 | Document | Content |
 |---|---|
-| [docs/technical_report](docs/technical_report) | Technical report: design, data model, methods, evaluation |
+| [docs/technical_note](docs/technical_note) | Technical note: design, data model, methods, evaluation |
 | [docs/SCHEMA_GUIDE.md](docs/SCHEMA_GUIDE.md) | Writing and changing a project schema |
 | [docs/API.md](docs/API.md) | Python client, command line and HTTP endpoints |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Installation, configuration, backup, lifecycle |
@@ -92,14 +92,14 @@ More in [docs/API.md](docs/API.md).
 
 ## Citation and licence
 
-Please cite the technical report and the software (see [CITATION.cff](CITATION.cff)):
+Please cite the technical note and the software (see [CITATION.cff](CITATION.cff)):
 
-> Adhikari, S., Noorsumar, G., and Jensen, Ø. (2026). *DataHub: a self-hosted, schema-driven catalogue for simulation and experimental data with knowledge graph and parameter-sweep design*. Technical report v1.0, Institute for Energy Technology (IFE). Zenodo. https://doi.org/10.5281/zenodo.23378345
+> Adhikari, S., Noorsumar, G., and Jensen, Ø. (2026). *DataHub: a self-hosted, schema-driven catalogue for simulation and experimental data with knowledge graph and parameter-sweep design*. Technical note v1.0. Zenodo. https://doi.org/10.5281/zenodo.23378345
 
 | What | Licence |
 |---|---|
 | Source code, configuration, scripts | [Apache License 2.0](LICENSE) |
-| Technical report, figures, documentation in `docs/` | [CC BY 4.0](LICENSES/CC-BY-4.0.txt) |
+| Technical note, figures, documentation in `docs/` | [CC BY 4.0](LICENSES/CC-BY-4.0.txt) |
 | Bundled web libraries and fonts | MIT, Apache-2.0, OFL-1.1 (see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)) |
 | IFE name and logo | trademark, not licensed ([details](LICENSES/LicenseRef-IFE-Trademark.txt)) |
 

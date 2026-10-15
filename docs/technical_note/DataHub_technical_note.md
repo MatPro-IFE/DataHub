@@ -1,10 +1,10 @@
 ---
-pagetitle: "DataHub technical report"
+pagetitle: "DataHub technical note"
 ---
 
 # Abstract {-}
 
-Simulation campaigns and experimental programmes produce thousands of datasets, each a folder of heterogeneous files: inputs, meshes, spatial field snapshots, time series, summaries, images and logs. Without a catalogue these results are hard to find, compare, share across organisations and reuse for machine learning. DataHub is a self-hosted, containerised data catalogue built from open-source components. It is generic: everything specific to a project (dataset types, input parameters, file classes, scalar quantities of interest, spatial fields and graph rules) is declared in one YAML file, the project schema, so that each project runs its own instance without code changes. Raw files are kept in an S3-compatible object store; metadata, parameters, quantities and audit logs are kept in PostgreSQL with full-text and vector indexes; relations between datasets are kept in a Neo4j knowledge graph. A web dashboard, a Python client and a command-line tool give people, scripts and AI agents the same access path. Every dataset is encoded as a parameter vector derived from the schema, spatial fields read from VTK, NumPy, HDF5, XDMF or Exodus II files are embedded with incremental principal component analysis, and similar datasets are linked in the graph. A parameter-sweep module measures how well a design space is covered and proposes the next runs with space-filling or Gaussian-process designs. Access is controlled per dataset through roles, organisations and project groups; time-limited sharing links give read access to people without an account; every download is logged. A security assessment combining static analysis, dependency auditing and tests against a running instance found no critical or high-severity issues; all medium and low findings except one accepted risk were fixed, and the remaining controls are documented. This report describes the architecture, the project schema, the data model, the algorithms, the security model and the alignment with the FAIR principles, and documents a reproducible evaluation on a synthetic dataset distributed with the open-source code.
+Simulation campaigns and experimental programmes produce thousands of datasets, each a folder of heterogeneous files: inputs, meshes, spatial field snapshots, time series, summaries, images and logs. Without a catalogue these results are hard to find, compare, share across organisations and reuse for machine learning. DataHub is a self-hosted, containerised data catalogue built from open-source components. It is generic: everything specific to a project (dataset types, input parameters, file classes, scalar quantities of interest, spatial fields and graph rules) is declared in one YAML file, the project schema, so that each project runs its own instance without code changes. Raw files are kept in an S3-compatible object store; metadata, parameters, quantities and audit logs are kept in PostgreSQL with full-text and vector indexes; relations between datasets are kept in a Neo4j knowledge graph. A web dashboard, a Python client and a command-line tool give people, scripts and AI agents the same access path. Every dataset is encoded as a parameter vector derived from the schema, spatial fields read from VTK, NumPy, HDF5, XDMF or Exodus II files are embedded with incremental principal component analysis, and similar datasets are linked in the graph. A parameter-sweep module measures how well a design space is covered and proposes the next runs with space-filling or Gaussian-process designs. Access is controlled per dataset through roles, organisations and project groups; time-limited sharing links give read access to people without an account; every download is logged. A security assessment combining static analysis, dependency auditing and tests against a running instance found no critical or high-severity issues; all medium and low findings except one accepted risk were fixed, and the remaining controls are documented. This note describes the architecture, the project schema, the data model, the algorithms, the security model and the alignment with the FAIR principles, and documents a reproducible evaluation on a synthetic dataset distributed with the open-source code.
 
 \newpage
 \setcounter{tocdepth}{2}
@@ -34,7 +34,7 @@ DataHub was developed at IFE to meet these requirements in collaborative researc
 
 Mature research data platforms exist, including institutional repositories, electronic lab notebooks and data lakes. They address publication or generic storage well, but none combines working-phase storage of large solver outputs, parameter-aware search, organisation-level access control and similarity-driven planning in a package that a project can configure and run itself. DataHub fills that gap. It is not a replacement for a long-term repository: cleared data is exported to one, for example Zenodo, at the end of a project.
 
-The remainder of this report describes the architecture (Section 2), the project schema (Section 3), the data model (Section 4), ingestion (Section 5), search (Section 6), knowledge graph and similarity methods (Section 7), parameter sweeps (Section 8), access control (Section 9), cyber security (Section 10), the user interface (Section 11), FAIR alignment and lifecycle (Section 12), deployment and evaluation (Section 13), and limitations (Section 14). The code, an example schema, a synthetic demo dataset and the scripts that produce every quantitative figure in this report are openly available (Section 15).
+The remainder of this note describes the architecture (Section 2), the project schema (Section 3), the data model (Section 4), ingestion (Section 5), search (Section 6), knowledge graph and similarity methods (Section 7), parameter sweeps (Section 8), access control (Section 9), cyber security (Section 10), the user interface (Section 11), FAIR alignment and lifecycle (Section 12), deployment and evaluation (Section 13), and limitations (Section 14). The code, an example schema, a synthetic demo dataset and the scripts that produce every quantitative figure in this note are openly available (Section 15).
 
 # System overview
 
@@ -60,7 +60,7 @@ Four design principles run through the system:
 
 # The project schema
 
-A DataHub instance is configured for a project by one YAML file, `config/schema.yaml`. The repository ships an example schema for a fictitious parametric cooling study of a heated block; the parameter and quantity names used in this report (`htc`, `load`, `peak_temperature`, a `temperature` field and so on) come from that example and have no special meaning to the software. A new project copies the example, replaces the names and restarts two containers.
+A DataHub instance is configured for a project by one YAML file, `config/schema.yaml`. The repository ships an example schema for a fictitious parametric cooling study of a heated block; the parameter and quantity names used in this note (`htc`, `load`, `peak_temperature`, a `temperature` field and so on) come from that example and have no special meaning to the software. A new project copies the example, replaces the names and restarts two containers.
 
 The schema has the following sections:
 
@@ -413,7 +413,7 @@ Fields are closed-form functions of the parameters (an exponentially cooling tem
 
 ## End-to-end test
 
-An end-to-end smoke test exercises every feature through the public HTTP interface against a fresh stack. The table lists the checks; all passed on a clean installation built from the repository on a 2-vCPU test container. The figures in this report were produced from the same instance and with the scripts in `docs/technical_report/figures/src`.
+An end-to-end smoke test exercises every feature through the public HTTP interface against a fresh stack. The table lists the checks; all passed on a clean installation built from the repository on a 2-vCPU test container. The figures in this note were produced from the same instance and with the scripts in `docs/technical_note/figures/src`.
 
 | Check | Result |
 |---|---|
@@ -456,7 +456,7 @@ Preparing the public release also served as a review. It replaced solver-specifi
 # Availability
 
 * **Software:** DataHub version 1.0.0 under the Apache License 2.0, which allows use, modification and redistribution, also commercially, with attribution and an explicit patent licence. Source code, Compose files, example schema, demo-data generator, tests and figure scripts are published in the public repository; the software release is archived with its own DOI.
-* **This report and the documentation:** Creative Commons Attribution 4.0 International (CC BY 4.0).
+* **This note and the documentation:** Creative Commons Attribution 4.0 International (CC BY 4.0).
 * **Licence information per file:** every file carries an SPDX licence identifier, either in its header or through a REUSE.toml file, and the repository passes the REUSE compliance check. The IFE name and logo are trademarks and are not covered by either licence.
 * **Third-party components:** bundled web libraries and fonts (Bootstrap, Bootstrap Icons, vis-network, Swagger UI, Inter, JetBrains Mono, Fira Sans) under MIT, Apache-2.0 or the SIL Open Font License; container images (PostgreSQL with pgvector, MinIO, Neo4j Community and, optionally, PostgREST and Supabase Studio) used unmodified under their own licences; Python packages including FastAPI, NumPy, SciPy, scikit-learn, VTK and h5py. A list is part of the repository (THIRD_PARTY_NOTICES.md).
 

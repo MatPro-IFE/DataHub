@@ -27,10 +27,11 @@ keywords:
   - digital twin
   - design of experiments
 preferred-citation:
-  type: report
+  type: generic
   title: "DataHub: a self-hosted, schema-driven catalogue for simulation and experimental data with knowledge graph and parameter-sweep design"
-  institution:
-    name: "Institute for Energy Technology (IFE)"
+  notes: "Technical note v1.0"
+  publisher:
+    name: Zenodo
   year: 2026
   month: 10
   doi: "10.5281/zenodo.23378345"

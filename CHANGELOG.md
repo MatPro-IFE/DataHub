@@ -22,4 +22,4 @@ First public release.
 - Database migrations applied automatically by the `db-schema` service (`docker/postgres/migrations/`)
 - Demo data include run_001 written as XDMF, Exodus II and HDF5; reader unit tests
 - Security hardening after an assessment (docs/SECURITY_ASSESSMENT.md): server-side session revocation, enforced password change, local-only login redirects, same-origin check, login-only API documentation, ml-api token, unprivileged read-only containers, pickle-free derived data, confined XDMF paths, defusedxml, upload limits, token redaction in logs, self-hosted front-end assets with a strict Content-Security-Policy, security scans and Dependabot in CI
-- Licensing made explicit: Apache-2.0 for code, CC BY 4.0 for report and documentation, SPDX headers, REUSE.toml, LICENSES/, THIRD_PARTY_NOTICES.md
+- Licensing made explicit: Apache-2.0 for code, CC BY 4.0 for the technical note and documentation, SPDX headers, REUSE.toml, LICENSES/, THIRD_PARTY_NOTICES.md

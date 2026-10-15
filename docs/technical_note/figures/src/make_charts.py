@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-make_charts.py - regenerate the quantitative figures of the DataHub technical report.
+make_charts.py - regenerate the quantitative figures of the DataHub technical note.
 
 All inputs are either computed here (sampling designs, Gaussian process) or read
 from the synthetic demo data set and the small CSV/JSON files in ../data, which

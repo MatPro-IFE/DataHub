@@ -2,7 +2,7 @@ DataHub
 Copyright 2026 Institutt for Energiteknikk (IFE), Norway
 
 The software in this repository is licensed under the Apache License, Version 2.0
-(LICENSE). The technical report, its figures and the documentation in docs/ are
+(LICENSE). The technical note, its figures and the documentation in docs/ are
 licensed under the Creative Commons Attribution 4.0 International licence
 (LICENSES/CC-BY-4.0.txt). REUSE.toml and the SPDX headers state the licence of
 every file.
@@ -13,9 +13,9 @@ This repository includes third-party components under their own licences:
   dashboard/static/vendor/vis-network      vis-network 9.1.9, Apache-2.0 or MIT
   dashboard/static/vendor/swagger-ui       Swagger UI 5.17.14, Apache-2.0 (see its NOTICE)
   dashboard/static/vendor/fonts            Inter, JetBrains Mono, SIL Open Font License 1.1
-  docs/technical_report/brand/fonts        Fira Sans, SIL Open Font License 1.1
+  docs/technical_note/brand/fonts        Fira Sans, SIL Open Font License 1.1
 
-The IFE name, logo and grid graphic (docs/technical_report/brand/logo) are
+The IFE name, logo and grid graphic (docs/technical_note/brand/logo) are
 trademarks of Institutt for Energiteknikk and are not licensed under Apache-2.0
 or CC BY 4.0 (LICENSES/LicenseRef-IFE-Trademark.txt).
 
