@@ -6,6 +6,14 @@ date-released: 2026-10-19
 license: Apache-2.0
 type: software
 repository-code: "https://github.com/MatPro-IFE/DataHub"
+doi: 10.5281/zenodo.23474084
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.23474084
+    description: "DataHub version 1.0.0"
+  - type: doi
+    value: 10.5281/zenodo.23474083
+    description: "DataHub, all versions (resolves to the latest)"
 authors:
   - family-names: Adhikari
     orcid: "https://orcid.org/0000-0002-9316-3292"

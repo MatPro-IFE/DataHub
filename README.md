@@ -1,5 +1,6 @@
 # DataHub
 
+[![Software DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23474083.svg)](https://doi.org/10.5281/zenodo.23474083)
 [![Technical note DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23378345.svg)](https://doi.org/10.5281/zenodo.23378345)
 
 **A self-hosted, schema-driven catalogue for simulation and experimental data, with a knowledge graph, similarity search and parameter-sweep design.**
@@ -95,6 +96,10 @@ More in [docs/API.md](docs/API.md).
 Please cite the technical note and the software (see [CITATION.cff](CITATION.cff)):
 
 > Adhikari, S., Noorsumar, G., and Jensen, Ø. (2026). *DataHub: a self-hosted, schema-driven catalogue for simulation and experimental data with knowledge graph and parameter-sweep design*. Technical note v1.0. Zenodo. https://doi.org/10.5281/zenodo.23378345
+>
+> Adhikari, S., Noorsumar, G., and Jensen, Ø. (2026). *DataHub* (version 1.0.0) [Software]. Zenodo. https://doi.org/10.5281/zenodo.23474084
+
+The software DOI above is for version 1.0.0; https://doi.org/10.5281/zenodo.23474083 always resolves to the latest version.
 
 | What | Licence |
 |---|---|
